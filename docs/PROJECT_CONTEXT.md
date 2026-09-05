@@ -2,7 +2,7 @@
 
 - 최종 업데이트: 2026-09-06
 - 현재 단계: PRD·사용자 플로우·화면 명세 v1.0 확정
-- 다음 작업: 프로토타입 보존, 실제 제품 저장소 초기화와 기술 설계 승인
+- 다음 작업: 인증 Provider ADR, Docker PostgreSQL·Prisma 데이터 기반 구축
 - 저장소: `/Users/mhbaek/dev/nextjs/gatgaga`
 
 ## 한 줄 정의

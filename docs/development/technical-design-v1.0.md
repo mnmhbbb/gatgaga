@@ -374,8 +374,8 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 
 ## 11. 구현 순서
 
-1. Figma와 화면 명세의 핵심 흐름 확정
-2. Prisma ERD와 migration 초안
+1. 관리형 인증 Provider와 첫 OAuth Provider ADR
+2. Docker PostgreSQL·Prisma ERD와 migration 초안
 3. 관리형 인증 연결과 User 동기화
 4. Space·Membership·Invitation 서버 유스케이스
 5. Place·SpacePlace·Recommendation 데이터 연결
