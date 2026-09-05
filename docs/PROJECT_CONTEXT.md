@@ -1,8 +1,8 @@
 # 같가가 프로젝트 핸드오프
 
 - 최종 업데이트: 2026-09-06
-- 현재 단계: PRD·사용자 플로우·화면 명세 v1.0 확정
-- 다음 작업: 인증 Provider ADR, Docker PostgreSQL·Prisma 데이터 기반 구축
+- 현재 단계: PRD·화면·기술 기준과 Better Auth·Kakao 인증 ADR·ERD 확정
+- 다음 작업: Docker PostgreSQL·Prisma 데이터 기반과 인증 세로 기능 구축
 - 저장소: `/Users/mhbaek/dev/nextjs/gatgaga`
 
 ## 한 줄 정의
@@ -22,10 +22,12 @@
 - 지도와 장소 검색은 Kakao Maps를 사용한다.
 - 현재 위치 검색은 구현하지 않는다. 지역과 장소명을 함께 검색하고 결과 주소로 위치를 판단한다.
 - Next.js App Router, TypeScript, FSD, Prisma, PostgreSQL, Neon과 Vercel을 사용한다.
-- 관리형 인증을 사용하고 Membership·Invitation·권한은 직접 구현한다.
-- 현재 저장소는 사용성 검증용 프로토타입으로 보존하고 실제 제품 저장소는 기술 착수 시 새로 초기화한다.
+- Better Auth·Kakao 로그인을 사용하고 인증·제품 테이블은 같은 PostgreSQL에 둔다. Membership·Invitation·객체 권한은 직접 구현한다.
+- 현재 `gatgaga`가 실제 제품 저장소이고 사용성 프로토타입은 `../gatgaga-prototype`에 보존한다.
 
-## 현재 프로토타입
+## 참고 프로토타입
+
+아래 흐름은 형제 폴더 `../gatgaga-prototype`에서 확인한다.
 
 - `/`: 데이터가 있는 Private Space
 - `/start`: 내 공간에서 Private Space를 만들고 첫 장소를 추가하는 흐름
@@ -40,16 +42,18 @@
 2. [`product/user-flow-v1.0.md`](product/user-flow-v1.0.md)
 3. [`design/screen-spec-v1.0.md`](design/screen-spec-v1.0.md)
 4. [`development/technical-design-v1.0.md`](development/technical-design-v1.0.md)
+5. [`adr/0002-authentication-with-better-auth.md`](adr/0002-authentication-with-better-auth.md)
+6. [`development/erd-v0.1.md`](development/erd-v0.1.md)
 
-이전 문서는 `archive/`에 있으며 결정 이력 확인용이다.
+이전 문서는 `../../gatgaga-prototype/docs/archive`에 있으며 결정 이력 확인용이다.
 
 ## 다음 순서
 
-1. 화면 명세의 Figma 페이지 구조대로 디자인 파일을 정리한다.
-2. 핵심 성공 흐름과 장소 제거 예외 흐름을 연결한다.
-3. 지인 1명에게 15~20분 사용성 파일럿을 진행한다.
-4. 큰 UX 문제만 수정한다.
-5. 인증 Provider와 DB 세부안을 결정하고 실제 데이터 개발을 시작한다.
+1. Docker PostgreSQL과 Prisma를 설치하고 버전을 고정한다.
+2. Better Auth core schema와 제품 ERD를 하나의 migration으로 만든다.
+3. Kakao Login 키·동의·callback을 설정하고 실제 계정 2개로 이메일 제공을 검증한다.
+4. 로그인→Space 생성→초대 복귀·수락 세로 기능을 구현한다.
+5. 통합 테스트를 통과한 뒤 장소 데이터 연결로 이동한다.
 
 ## 작업 목적
 

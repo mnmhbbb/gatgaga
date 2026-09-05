@@ -1,11 +1,11 @@
 # 같가가 문서 시작점
 
 - 최종 업데이트: 2026-09-06
-- 현재 단계: **실제 개발 저장소 초기화 완료 → 기술 ADR 확정**
+- 현재 단계: **인증 ADR·ERD 기준선 완료 → 데이터 기반 구현 준비**
 
 ## 지금 읽을 문서
 
-현행 제품·디자인·개발 결정은 아래 네 문서만 기준으로 사용한다.
+현행 제품·디자인·개발 결정은 아래 문서를 기준으로 사용한다.
 
 | 순서 | 문서 | 역할 |
 | --- | --- | --- |
@@ -13,8 +13,10 @@
 | 2 | [`product/user-flow-v1.0.md`](product/user-flow-v1.0.md) | 사용자가 기능을 밟는 순서와 기술 착수 게이트 |
 | 3 | [`design/screen-spec-v1.0.md`](design/screen-spec-v1.0.md) | 화면별 정보·행동·상태와 Figma 기준 |
 | 4 | [`development/technical-design-v1.0.md`](development/technical-design-v1.0.md) | FSD·서버·DB·지도·배포 구조 |
+| 5 | [`adr/0002-authentication-with-better-auth.md`](adr/0002-authentication-with-better-auth.md) | Better Auth·Kakao 인증 결정과 설정 시점 |
+| 6 | [`development/erd-v0.1.md`](development/erd-v0.1.md) | P0 관계·제약·동시성의 데이터 기준 |
 
-새로운 결정은 먼저 네 문서 중 담당 문서에 반영한다. 내용이 충돌하면 `PRD → 사용자 플로우 → 화면 명세 → 기술 설계` 순서로 제품 의도를 판단하고, 구현 제약으로 제품 동작이 달라져야 하면 PRD부터 함께 수정한다.
+새로운 결정은 먼저 담당 문서에 반영한다. 내용이 충돌하면 `PRD → 사용자 플로우 → 화면 명세 → ADR·기술 설계 → ERD` 순서로 제품 의도를 판단하고, 구현 제약으로 제품 동작이 달라져야 하면 PRD부터 함께 수정한다.
 
 ## 현재 작업 순서
 
@@ -24,15 +26,16 @@ PRD v1.0 기준선 완료
 → Figma·Next.js 프로토타입으로 핵심 흐름 검토
 → PRD·사용자 플로우·화면 명세 v1.0 확정
 → 실제 제품 저장소 초기화와 기술 설계 승인
-→ 인증·DB·서버 권한 구현
+→ Better Auth·Kakao ADR와 ERD 확정
+→ Docker PostgreSQL·Prisma·인증 세로 기능 구현
 → Alpha 전 지인 1명 사용성 파일럿
 ```
 
-현재 `gatgaga` 폴더는 사용성 검증용 UI 프로토타입이며 실제 제품 코드로 간주하지 않는다. Figma와 문서를 확정한 뒤 프로토타입을 보존하고, 실제 제품 저장소를 새로 초기화해 필요한 UI만 선별 이식한다.
+현재 `gatgaga` 폴더가 실제 제품 저장소다. 사용성 검증용 UI 프로토타입은 형제 폴더 `../gatgaga-prototype`에 읽기 전용으로 보존하고, 확정된 토큰과 UI 패턴만 선별 이식한다.
 
 ## 핸드오프
 
-다른 PC나 새 작업에서 이어갈 때는 [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md)와 위 네 문서를 전달한다.
+다른 PC나 새 작업에서 이어갈 때는 [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md)와 위 현행 문서를 전달한다.
 
 ## 과거 문서
 

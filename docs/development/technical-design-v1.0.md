@@ -5,6 +5,7 @@
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
+- ERD 기준: `./erd-v0.1.md`
 - 문서 역할: 애플리케이션·데이터·배포 구조의 단일 기준(SSOT)
 
 ## 1. 목표와 제약
@@ -18,7 +19,7 @@
 ### 제약
 
 - 사이드 프로젝트 가용 시간 안에서 운영 가능한 모듈러 모놀리스로 시작한다.
-- 마이크로서비스, Kubernetes, 자체 인증과 범용 권한 엔진은 만들지 않는다.
+- 마이크로서비스, Kubernetes, OAuth·비밀번호·세션 암호 로직의 직접 구현과 범용 권한 엔진은 만들지 않는다.
 - 모바일 우선 PWA가 첫 클라이언트다. React Native 전용 추상화는 현재 만들지 않는다.
 
 ## 2. 기술 스택
@@ -34,7 +35,7 @@
 | DB | PostgreSQL, 운영 Neon | 확정 |
 | 배포 | Vercel | 확정 |
 | 지도·장소 검색 | Kakao Maps JavaScript SDK | 확정 |
-| 인증 | 관리형 인증 + OAuth 1개 | Provider 미정 |
+| 인증 | Better Auth + Kakao OAuth | 확정 |
 | 이미지 | S3 private bucket + Presigned URL | P1 |
 | 테스트 Mock | 필요 시 MSW | 도입 시점 미정 |
 | 오류·분석 | 도구 미정 | 구현 전 결정 |
@@ -193,7 +194,7 @@ User
                       ├─ SpaceInvitation
                       └─ SpacePlace ─ Place
                            ├─ PlaceRecommendation ─ User
-                           └─ PostPlace ─ Post ─ Comment
+                           └─ Post ─ Comment
 ```
 
 P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership 상태를 추가한다.
@@ -204,32 +205,35 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 
 | 엔티티 | 핵심 의미 |
 | --- | --- |
-| User | 관리형 인증 사용자와 서비스 프로필 |
-| Space | 이름, visibility, Owner와 활동 시각 |
+| User | Better Auth가 같은 PostgreSQL에 관리하는 내부 사용자와 Kakao 프로필 snapshot |
+| Account | Kakao 등 로그인 수단과 User의 외부 identity 연결 |
+| Session | DB 기반 사용자 세션과 만료 정보 |
+| Verification | Better Auth가 사용하는 단기 검증 데이터 |
+| Space | 이름, visibility와 생성 감사 정보 |
 | SpaceMembership | User-Space 관계, Owner/Member, 상태 |
 | SpaceInvitation | 해시된 토큰, 활성·폐기 상태, 생성자 |
 | Place | Provider 또는 직접 등록 장소의 사실 정보 |
 | SpacePlace | Space에 저장된 Place와 제거 상태 |
 | PlaceRecommendation | 멤버의 장소 추천 사실과 시각 |
 | Post | 작성자 소유 텍스트 콘텐츠와 soft delete 상태 |
-| PostPlace | Post와 SpacePlace 관계, 향후 다중 첨부 경계 |
 | Comment | Post의 작성자 소유 평면 댓글과 soft delete 상태 |
 
 ### 주요 유일 제약
 
+- `Account(issuer, accountId)` unique
 - `SpaceMembership(spaceId, userId)` unique
 - `SpacePlace(spaceId, placeId)` unique
 - `PlaceRecommendation(spacePlaceId, userId)` unique
 - Kakao Place: `(sourceType, providerPlaceId)` unique
 - 활성 초대: Space당 하나만 허용하도록 트랜잭션 또는 부분 인덱스로 보장
 
-직접 등록 Place는 `providerPlaceId` 없이 장소명과 좌표, 등록자와 원본 Space를 보존한다. Private Alpha에서는 다른 Space의 검색 후보로 자동 재사용하지 않는다.
+직접 등록 Place는 `providerPlaceId` 없이 장소명과 좌표 및 등록자를 보존한다. 원본 Space는 soft delete 뒤에도 남는 SpacePlace 관계로 확인하며, Private Alpha에서는 다른 Space의 검색 후보로 자동 재사용하지 않는다.
 
 ### 삭제 상태
 
 - 사용자 삭제와 운영 숨김, 실제 물리 삭제를 구분한다.
 - `SpacePlace.deletedAt`이 있으면 연결 추천·글·댓글을 함께 조회에서 제외한다.
-- Post나 Comment는 `deletedAt`, `deletedBy`를 보존한다.
+- Post나 Comment는 작성자만 삭제하므로 `deletedAt`만 보존한다.
 - 댓글이 남은 Post는 원문 대신 삭제 상태를 반환한다.
 - 보존 기간과 물리 삭제 작업은 개발 전에 결정한다.
 
@@ -247,18 +251,21 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 
 ### 장소 제거
 
-1. DB에서 최신 Membership과 대상 Space를 검사한다.
-2. 최초 등록자인 경우 다른 멤버 기여가 없는지 다시 계산한다.
-3. Owner라면 최신 추천·글·댓글 수를 확인 요청의 값과 비교한다.
-4. 값이 달라졌으면 `IMPACT_CHANGED`로 재확인을 요청한다.
-5. 같으면 SpacePlace를 soft delete하고 감사 정보를 남긴다.
+1. 제거 확인 응답에 최신 추천·글·댓글 수와 `SpacePlace.impactVersion`을 포함한다.
+2. DB에서 최신 Membership과 대상 Space를 검사한다.
+3. 최초 등록자인 경우 다른 멤버의 활성 추천·글·댓글이 없는지 다시 계산한다. 최초 등록자의 자동 추천은 제외한다.
+4. Owner라면 최신 영향 수와 `observedVersion`을 비교한다.
+5. `deletedAt IS NULL AND impactVersion = observedVersion` 조건으로 갱신하고 0행이면 `IMPACT_CHANGED`를 반환한다.
+6. 같으면 SpacePlace를 soft delete하고 제거자와 시각을 남긴다.
+
+추천·Post·Comment의 생성·수정·삭제는 같은 transaction에서 활성 SpacePlace의 `impactVersion`을 먼저 증가시킨다. 따라서 제거 확인과 실행 사이에 기여가 바뀌면 조용히 유실하지 않는다.
 
 ### 콘텐츠 수정
 
 - Post와 Comment는 `authorId === session.userId`일 때만 변경한다.
 - MVP에는 공동 편집과 사용자 노출 버전 충돌 UI가 없다.
-- 마지막 쓰기 덮어쓰기보다 작성자 1명 모델과 짧은 편집 화면으로 충돌 가능성을 줄인다.
-- 필요하면 `updatedAt` optimistic check를 서버 내부 보호 수단으로 추가하되 Jira식 충돌 화면은 노출하지 않는다.
+- `revision` optimistic check로 같은 계정의 여러 탭·기기 덮어쓰기를 막는다.
+- 충돌 시 자동 병합이나 Jira식 비교 화면을 만들지 않고 최신 내용을 다시 불러오는 일반 오류로 처리한다.
 
 ## 7. 서버 API 경계 초안
 
@@ -274,21 +281,25 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 | `updatePost` | postId, body | 작성자 권한 |
 | `deletePost` | postId | 작성자 권한, soft delete |
 | `createComment` | postId, body | 활성 Member와 같은 Space 확인 |
-| `removeSpacePlace` | id, observedImpact | 최신 권한·영향 확인, soft delete |
-| `restoreSpacePlace` | id | Owner 확인, 기존 맥락 복구 |
+| `removeSpacePlace` | id, observedImpact, observedVersion | 최신 권한·영향 확인, soft delete |
+| `undoRemoveSpacePlace` | id | 제거자 본인, DB 시각 기준 5초 안에 복구 |
+| `restoreSpacePlace` | id | Owner 확인, 시간 제한 없이 기존 맥락 복구 |
 
 오류는 최소한 `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATION_ERROR`, `CONFLICT`, `PROVIDER_ERROR`, `RATE_LIMITED`로 구분한다. Private 리소스의 비인가 접근은 존재 여부 노출을 피하도록 응답을 통일한다.
 
 ## 8. 인증과 권한
 
-- 계정 생성, 세션, OAuth와 복구는 관리형 인증에 맡긴다.
-- User, SpaceMembership, Invitation과 리소스 권한은 제품 DB와 서버에서 직접 구현한다.
-- 인증 Provider의 User ID와 내부 User를 유일하게 연결한다.
-- Cookie 기반 세션이면 CSRF 보호와 SameSite 정책을 확인한다.
+- Better Auth를 애플리케이션에서 운영하고 Kakao를 외부 OAuth IdP로 사용한다.
+- Better Auth의 User·Account·Session·Verification과 제품 테이블을 같은 PostgreSQL·Prisma migration history로 관리한다.
+- `Account(issuer, accountId)`가 Kakao identity와 내부 User를 연결하므로 별도 사용자 동기화 테이블을 만들지 않는다.
+- P0는 PostgreSQL 세션을 사용하고 Redis와 cookie cache는 도입하지 않는다.
+- Provider token은 암호화하고 implicit account linking은 비활성화한다.
+- `User.disabledAt`, Session, SpaceMembership과 객체 권한은 모든 Private 요청에서 서버가 확인한다.
+- Cookie의 CSRF, trusted origin, Secure, HttpOnly와 SameSite 정책을 E2E로 확인한다.
 - 모든 입력은 서버에서 schema validation한다.
 - ID만 받아 update/delete하지 않고 Space 경계와 소유권을 함께 조건으로 건다.
 
-인증 Provider는 비용, Next.js App Router 호환성, 로컬 개발, 사용자 데이터 이전성과 운영 UI를 비교한 뒤 선택한다.
+세부 결정과 Kakao 설정 순서는 [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)를 따른다. Kakao 키·활성화는 인증 구현 첫 작업에서 실제 계정 2개로 검증한다.
 
 ## 9. PostgreSQL·Prisma·Vercel
 
@@ -296,8 +307,9 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 
 ```text
 사용자 브라우저
-  └─ Vercel — Next.js 화면, Route Handler와 Server Action 실행
-       ├─ Neon PostgreSQL — User, Space, 장소, 글, 댓글 등 구조화 데이터
+  └─ Vercel — Next.js, Better Auth, Route Handler와 Server Action 실행
+       ├─ Kakao Login — 외부 OAuth IdP
+       ├─ Neon PostgreSQL — 인증·Space·장소·글·댓글 등 구조화 데이터
        └─ S3 — 게시글 이미지 원본·변환본(P1에서 도입)
 
 사용자 브라우저
@@ -332,9 +344,10 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 NEXT_PUBLIC_KAKAO_MAP_APP_KEY=
 DATABASE_URL=
 DIRECT_URL=
-AUTH_SECRET=
-AUTH_PROVIDER_CLIENT_ID=
-AUTH_PROVIDER_CLIENT_SECRET=
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
+KAKAO_CLIENT_ID=
+KAKAO_CLIENT_SECRET=
 ```
 
 실제 값은 커밋하지 않는다. Vercel 환경 변수에는 Preview와 Production 범위를 분리한다.
@@ -374,22 +387,21 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 
 ## 11. 구현 순서
 
-1. 관리형 인증 Provider와 첫 OAuth Provider ADR
-2. Docker PostgreSQL·Prisma ERD와 migration 초안
-3. 관리형 인증 연결과 User 동기화
-4. Space·Membership·Invitation 서버 유스케이스
+1. Docker PostgreSQL·Prisma 기반과 버전 고정
+2. Better Auth config 생성, core schema와 제품 ERD 병합, 첫 migration
+3. Kakao Login 설정·이메일 스파이크와 Better Auth 세션 연결
+4. Space·Owner Membership 생성과 초대 intent·수락 세로 기능
 5. Place·SpacePlace·Recommendation 데이터 연결
-6. Post·Comment와 작성자 권한
-7. 장소 제거·복구 동시성 테스트
+6. Post·Comment와 작성자 권한·revision
+7. 장소 제거·실행 취소·복구 동시성 테스트
 8. E2E·관측·Vercel Preview
 9. 지인 Private Alpha 배포
 
 ## 12. 구현 전 열린 결정
 
-- 관리형 인증 Provider와 OAuth Provider
 - Server Action과 Route Handler의 기능별 사용 기준
 - Zod 등 runtime validation 도구
-- Prisma 버전과 Neon 연결 방식의 최신 권장안
+- Better Auth·Prisma 정확한 버전과 Neon 연결 방식의 최신 권장안
 - 직접 등록 주소 검색 UX와 Kakao Geocoder 사용 범위
 - Post·Comment·SpacePlace 보존 기간과 물리 삭제 작업
 - 오류 추적과 제품 분석 도구

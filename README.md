@@ -10,7 +10,7 @@
 - Next.js 16.3.3 Active LTS, App Router와 Turbopack
 - React 19.2, TypeScript strict, Tailwind CSS 4
 - Feature-Sliced Design와 Steiger
-- 이후 Prisma, PostgreSQL·Neon, 관리형 인증과 Vercel 연결
+- 이후 Prisma, PostgreSQL·Neon, Better Auth·Kakao 로그인과 Vercel 연결
 
 ## 실행
 
