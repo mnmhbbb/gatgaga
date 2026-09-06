@@ -1,0 +1,23 @@
+name: gatgaga
+
+services:
+  postgres:
+    image: postgres:18.4-alpine3.23
+    environment:
+      POSTGRES_DB: gatgaga
+      POSTGRES_USER: gatgaga
+      POSTGRES_PASSWORD: gatgaga_local
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gatgaga -d gatgaga"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    stop_grace_period: 10s
+
+volumes:
+  postgres_data:

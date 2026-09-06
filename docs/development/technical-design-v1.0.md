@@ -1,7 +1,7 @@
 # 같가가 기술 설계 v1.0
 
 - 최종 업데이트: 2026-09-06
-- 상태: **개발 착수 기준선 — 열린 결정을 ADR로 확정**
+- 상태: **데이터 기반 구현 완료 — 인증 세로 기능 착수**
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
@@ -31,11 +31,11 @@
 | 언어 | TypeScript strict | 확정 |
 | 프론트 구조 | FSD | 확정 |
 | 서버 구조 | 동일 저장소의 모듈러 모놀리스 | 확정 |
-| ORM | Prisma | 확정 |
-| DB | PostgreSQL, 운영 Neon | 확정 |
+| ORM | Prisma 7.10.0 + PostgreSQL driver adapter | 구현 |
+| DB | PostgreSQL 18.4(local), 운영 Neon | local 구현 |
 | 배포 | Vercel | 확정 |
 | 지도·장소 검색 | Kakao Maps JavaScript SDK | 확정 |
-| 인증 | Better Auth + Kakao OAuth | 확정 |
+| 인증 | Better Auth 1.7.2 + Kakao OAuth | schema 구현 |
 | 이미지 | S3 private bucket + Presigned URL | P1 |
 | 테스트 Mock | 필요 시 MSW | 도입 시점 미정 |
 | 오류·분석 | 도구 미정 | 구현 전 결정 |
@@ -387,9 +387,9 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 
 ## 11. 구현 순서
 
-1. Docker PostgreSQL·Prisma 기반과 버전 고정
-2. Better Auth config 생성, core schema와 제품 ERD 병합, 첫 migration
-3. Kakao Login 설정·이메일 스파이크와 Better Auth 세션 연결
+1. **완료** — Docker PostgreSQL 18.4·Prisma 7.10.0 기반과 버전 고정
+2. **완료** — Better Auth 1.7.2 core schema와 제품 ERD 병합, 첫 migration·제약 smoke test
+3. **다음** — Kakao Login 설정·이메일 스파이크와 Better Auth 세션 연결
 4. Space·Owner Membership 생성과 초대 intent·수락 세로 기능
 5. Place·SpacePlace·Recommendation 데이터 연결
 6. Post·Comment와 작성자 권한·revision
@@ -401,7 +401,7 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 
 - Server Action과 Route Handler의 기능별 사용 기준
 - Zod 등 runtime validation 도구
-- Better Auth·Prisma 정확한 버전과 Neon 연결 방식의 최신 권장안
+- Neon pooled·direct 연결 문자열과 Preview DB 운영 방식
 - 직접 등록 주소 검색 UX와 Kakao Geocoder 사용 범위
 - Post·Comment·SpacePlace 보존 기간과 물리 삭제 작업
 - 오류 추적과 제품 분석 도구

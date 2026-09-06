@@ -1,7 +1,7 @@
 # 같가가 ERD v0.1
 
 - 최종 업데이트: 2026-09-06
-- 상태: **설계 기준선 — Prisma 구현 전 검증**
+- 상태: **구현 기준선 — 첫 Prisma migration 적용·검증 완료**
 - 인증 결정: [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)
 - 제품 기준: [`../product/prd-v1.0.md`](../product/prd-v1.0.md)
 - 관계 개요: [같가가 P0 ERD FigJam](https://www.figma.com/board/dilV1C9TVEYGCfRO4bUPhh)
@@ -131,6 +131,7 @@ erDiagram
         varchar external_url "nullable"
         uuid created_by_user_id "nullable FK"
         timestamptz created_at
+        timestamptz updated_at
     }
     SPACE_PLACE {
         uuid id PK
@@ -144,9 +145,8 @@ erDiagram
         timestamptz updated_at
     }
     PLACE_RECOMMENDATION {
-        uuid id PK
-        uuid space_place_id FK
-        uuid user_id FK
+        uuid space_place_id PK,FK
+        uuid user_id PK,FK
         timestamptz created_at
     }
 ```
@@ -234,7 +234,7 @@ P0에는 별도 `ProductUser`나 `UserProfile`을 만들지 않는다. `disabled
 | --- | --- | --- |
 | `Place` | Provider·직접 등록 장소의 사실 | 좌표 필수, Kakao ID는 Provider 범위에서 unique |
 | `SpacePlace` | Space에 저장된 Place | `(spaceId, placeId)` unique, soft delete 후 같은 행 복구, 동시성 version |
-| `PlaceRecommendation` | 멤버의 추천 사실 | `(spacePlaceId, userId)` unique, P0 취소 없음 |
+| `PlaceRecommendation` | 멤버의 추천 사실 | `(spacePlaceId, userId)` composite PK, P0 취소 없음 |
 | `Post` | Space에 속한 작성자 소유 글 | 본문 1~1,000자, soft delete |
 | `Comment` | Post의 평면 댓글 | 본문 1~1,000자, soft delete, P0 대댓글 없음 |
 
@@ -265,11 +265,11 @@ Prisma schema만으로 표현할 수 없는 부분 인덱스와 CHECK는 생성�
 추가 CHECK:
 
 - `char_length(trim(space.name)) BETWEEN 1 AND 40`
-- `char_length(post.body) BETWEEN 1 AND 1000`
-- `char_length(comment.body) BETWEEN 1 AND 1000`
+- `char_length(btrim(post.body)) BETWEEN 1 AND 1000`
+- `char_length(btrim(comment.body)) BETWEEN 1 AND 1000`
 - `latitude BETWEEN -90 AND 90`
 - `longitude BETWEEN -180 AND 180`
-- `sourceType = KAKAO`와 `providerPlaceId IS NOT NULL`의 동치
+- `KAKAO`는 `providerPlaceId`만, `USER`는 `createdByUserId`만 필수인 출처별 필드 쌍
 - `impactVersion >= 0`
 - `Post.revision >= 1`, `Comment.revision >= 1`
 - `SpacePlace.deletedAt`과 `deletedByUserId`는 둘 다 null이거나 둘 다 값임
@@ -323,10 +323,10 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 
 ## 10. 구현 순서와 검증
 
-1. Docker PostgreSQL과 Prisma를 설치하고 Better Auth config를 먼저 작성한다.
-2. `auth generate` 결과와 이 ERD를 비교해 하나의 `schema.prisma`로 합친다.
-3. Prisma migration을 생성한 뒤 부분 인덱스·CHECK·FK 정책을 SQL로 보강한다.
-4. `createSpace → Kakao 로그인 → 초대 복귀 → acceptInvitation` 세로 기능을 integration test와 함께 구현한다.
+1. **완료** — Docker PostgreSQL 18.4와 Prisma 7.10.0, Better Auth 1.7.2 config를 구성한다.
+2. **완료** — `auth generate` 결과와 이 ERD를 비교해 하나의 `schema.prisma`로 합친다.
+3. **완료** — 첫 migration에 부분 인덱스·CHECK·FK 정책을 보강하고 실제 PostgreSQL smoke test를 통과한다.
+4. **다음** — `Kakao 로그인 → createSpace → 초대 복귀 → acceptInvitation` 세로 기능을 integration test와 함께 구현한다.
 5. 장소 추가·추천·글·댓글·제거의 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
 
 최소 검증 시나리오:

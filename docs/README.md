@@ -1,7 +1,7 @@
 # 같가가 문서 시작점
 
 - 최종 업데이트: 2026-09-06
-- 현재 단계: **인증 ADR·ERD 기준선 완료 → 데이터 기반 구현 준비**
+- 현재 단계: **PostgreSQL·Prisma 기반 완료 → Better Auth·Kakao 인증 세로 기능**
 
 ## 지금 읽을 문서
 
@@ -27,7 +27,8 @@ PRD v1.0 기준선 완료
 → PRD·사용자 플로우·화면 명세 v1.0 확정
 → 실제 제품 저장소 초기화와 기술 설계 승인
 → Better Auth·Kakao ADR와 ERD 확정
-→ Docker PostgreSQL·Prisma·인증 세로 기능 구현
+→ Docker PostgreSQL·Prisma·첫 migration 완료
+→ Better Auth·Kakao 인증 세로 기능 구현
 → Alpha 전 지인 1명 사용성 파일럿
 ```
 

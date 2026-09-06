@@ -1,8 +1,8 @@
 # 같가가 프로젝트 핸드오프
 
 - 최종 업데이트: 2026-09-06
-- 현재 단계: PRD·화면·기술 기준과 Better Auth·Kakao 인증 ADR·ERD 확정
-- 다음 작업: Docker PostgreSQL·Prisma 데이터 기반과 인증 세로 기능 구축
+- 현재 단계: PostgreSQL 18·Prisma 7·Better Auth schema 기반과 첫 migration 완료
+- 다음 작업: Better Auth·Kakao 로그인 설정과 실제 계정 인증 스파이크
 - 저장소: `/Users/mhbaek/dev/nextjs/gatgaga`
 
 ## 한 줄 정의
@@ -23,6 +23,8 @@
 - 현재 위치 검색은 구현하지 않는다. 지역과 장소명을 함께 검색하고 결과 주소로 위치를 판단한다.
 - Next.js App Router, TypeScript, FSD, Prisma, PostgreSQL, Neon과 Vercel을 사용한다.
 - Better Auth·Kakao 로그인을 사용하고 인증·제품 테이블은 같은 PostgreSQL에 둔다. Membership·Invitation·객체 권한은 직접 구현한다.
+- Prisma 7.10.0과 Better Auth 1.7.2를 정확히 고정했다. 로컬 DB는 Docker PostgreSQL 18.4를 사용한다.
+- Better Auth core와 제품 ERD를 합친 첫 migration, 부분 unique·CHECK 제약과 rollback smoke test가 통과했다.
 - 현재 `gatgaga`가 실제 제품 저장소이고 사용성 프로토타입은 `../gatgaga-prototype`에 보존한다.
 
 ## 참고 프로토타입
@@ -49,11 +51,17 @@
 
 ## 다음 순서
 
-1. Docker PostgreSQL과 Prisma를 설치하고 버전을 고정한다.
-2. Better Auth core schema와 제품 ERD를 하나의 migration으로 만든다.
-3. Kakao Login 키·동의·callback을 설정하고 실제 계정 2개로 이메일 제공을 검증한다.
-4. 로그인→Space 생성→초대 복귀·수락 세로 기능을 구현한다.
-5. 통합 테스트를 통과한 뒤 장소 데이터 연결로 이동한다.
+1. Kakao Login 키·동의·callback을 설정하고 실제 계정 2개로 이메일 제공을 검증한다.
+2. Better Auth runtime config와 Next.js auth route를 연결한다.
+3. 로그인→Space 생성→초대 복귀·수락 세로 기능을 구현한다.
+4. 통합 테스트를 통과한 뒤 장소 데이터 연결로 이동한다.
+
+완료한 데이터 기반:
+
+- `compose.yaml`: PostgreSQL 18.4와 영속 volume
+- `prisma/schema.prisma`: Better Auth core 4개 + 제품 8개 모델
+- `prisma/migrations/20260906065619_init`: 첫 migration과 DB 무결성 제약
+- `prisma/tests/constraints-smoke.sql`: 실제 PostgreSQL 제약 회귀 검증
 
 ## 작업 목적
 

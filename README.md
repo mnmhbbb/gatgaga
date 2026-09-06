@@ -10,20 +10,27 @@
 - Next.js 16.3.3 Active LTS, App Router와 Turbopack
 - React 19.2, TypeScript strict, Tailwind CSS 4
 - Feature-Sliced Design와 Steiger
-- 이후 Prisma, PostgreSQL·Neon, Better Auth·Kakao 로그인과 Vercel 연결
+- Prisma 7.10.0, PostgreSQL 18.4(local)·Neon(production)
+- Better Auth 1.7.2·Kakao 로그인과 Vercel
 
 ## 실행
 
 ```bash
 nvm use
 corepack pnpm install
+corepack pnpm db:up
+corepack pnpm db:migrate
 corepack pnpm dev
 ```
+
+`db:down`은 컨테이너만 종료하고 로컬 DB volume은 보존합니다.
 
 ## 품질 검사
 
 ```bash
 corepack pnpm verify
+corepack pnpm db:validate
+corepack pnpm db:test-constraints
 ```
 
 ## 문서

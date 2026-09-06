@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../server/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SpaceVisibility {
+  PRIVATE
+  PUBLIC
+
+  @@map("space_visibility")
+}
+
+enum MembershipRole {
+  OWNER
+  MEMBER
+
+  @@map("membership_role")
+}
+
+enum PlaceSourceType {
+  KAKAO
+  USER
+
+  @@map("place_source_type")
+}
+
+// Better Auth core model. Keep its required fields aligned with the pinned CLI output.
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  email         String
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  disabledAt    DateTime? @map("disabled_at") @db.Timestamptz(3)
+
+  sessions             Session[]
+  accounts             Account[]
+  spacesCreated        Space[]               @relation("SpaceCreatedBy")
+  spaceMemberships     SpaceMembership[]
+  invitationsCreated   SpaceInvitation[]     @relation("InvitationCreatedBy")
+  invitationsRevoked   SpaceInvitation[]     @relation("InvitationRevokedBy")
+  placesCreated        Place[]               @relation("PlaceCreatedBy")
+  spacePlacesAdded     SpacePlace[]          @relation("SpacePlaceAddedBy")
+  spacePlacesDeleted   SpacePlace[]          @relation("SpacePlaceDeletedBy")
+  placeRecommendations PlaceRecommendation[]
+  posts                Post[]
+  comments             Comment[]
+
+  @@unique([email], map: "user_email_uidx")
+  @@map("user")
+}
+
+// Better Auth core model.
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  token     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token], map: "session_token_uidx")
+  @@index([userId, expiresAt], map: "session_user_id_expires_at_idx")
+  @@index([expiresAt], map: "session_expires_at_idx")
+  @@map("session")
+}
+
+// Better Auth core model. OAuth tokens remain encrypted by the auth configuration.
+model Account {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issuer                String
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id") @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([issuer, accountId], map: "account_issuer_account_id_uidx")
+  @@index([userId], map: "account_user_id_idx")
+  @@map("account")
+}
+
+// Better Auth core model.
+model Verification {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier], map: "verification_identifier_idx")
+  @@map("verification")
+}
+
+model Space {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String          @db.VarChar(40)
+  visibility      SpaceVisibility @default(PRIVATE)
+  createdByUserId String          @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  createdBy   User              @relation("SpaceCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  memberships SpaceMembership[]
+  invitations SpaceInvitation[]
+  places      SpacePlace[]
+
+  @@index([createdByUserId], map: "space_created_by_user_id_idx")
+  @@map("space")
+}
+
+model SpaceMembership {
+  spaceId   String         @map("space_id") @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  role      MembershipRole @default(MEMBER)
+  revokedAt DateTime?      @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Restrict)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([spaceId, userId])
+  @@index([userId, revokedAt, createdAt(sort: Desc)], map: "space_membership_user_active_created_idx")
+  @@map("space_membership")
+}
+
+model SpaceInvitation {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId         String    @map("space_id") @db.Uuid
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  tokenHash       Bytes     @unique(map: "space_invitation_token_hash_uidx") @map("token_hash") @db.ByteA
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedByUserId String?   @map("revoked_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  space     Space @relation(fields: [spaceId], references: [id], onDelete: Restrict)
+  createdBy User  @relation("InvitationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  revokedBy User? @relation("InvitationRevokedBy", fields: [revokedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([spaceId, createdAt(sort: Desc)], map: "space_invitation_space_created_idx")
+  @@index([createdByUserId], map: "space_invitation_created_by_user_id_idx")
+  @@index([revokedByUserId], map: "space_invitation_revoked_by_user_id_idx")
+  @@map("space_invitation")
+}
+
+model Place {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceType      PlaceSourceType @map("source_type")
+  providerPlaceId String?         @map("provider_place_id") @db.VarChar(100)
+  name            String          @db.VarChar(200)
+  category        String?         @db.VarChar(200)
+  address         String?         @db.VarChar(500)
+  latitude        Float
+  longitude       Float
+  externalUrl     String?         @map("external_url") @db.VarChar(2048)
+  createdByUserId String?         @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  createdBy   User?        @relation("PlaceCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  spacePlaces SpacePlace[]
+
+  @@index([createdByUserId], map: "place_created_by_user_id_idx")
+  @@map("place")
+}
+
+model SpacePlace {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId         String    @map("space_id") @db.Uuid
+  placeId         String    @map("place_id") @db.Uuid
+  addedByUserId   String    @map("added_by_user_id") @db.Uuid
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+  deletedByUserId String?   @map("deleted_by_user_id") @db.Uuid
+  impactVersion   Int       @default(0) @map("impact_version")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  space           Space                 @relation(fields: [spaceId], references: [id], onDelete: Restrict)
+  place           Place                 @relation(fields: [placeId], references: [id], onDelete: Restrict)
+  addedBy         User                  @relation("SpacePlaceAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict)
+  deletedBy       User?                 @relation("SpacePlaceDeletedBy", fields: [deletedByUserId], references: [id], onDelete: Restrict)
+  recommendations PlaceRecommendation[]
+  posts           Post[]
+
+  @@unique([spaceId, placeId], map: "space_place_space_id_place_id_uidx")
+  @@index([spaceId, deletedAt, createdAt(sort: Desc)], map: "space_place_space_active_created_idx")
+  @@index([placeId], map: "space_place_place_id_idx")
+  @@index([addedByUserId], map: "space_place_added_by_user_id_idx")
+  @@index([deletedByUserId], map: "space_place_deleted_by_user_id_idx")
+  @@map("space_place")
+}
+
+model PlaceRecommendation {
+  spacePlaceId String   @map("space_place_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  spacePlace SpacePlace @relation(fields: [spacePlaceId], references: [id], onDelete: Restrict)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([spacePlaceId, userId])
+  @@index([userId, createdAt(sort: Desc)], map: "place_recommendation_user_created_idx")
+  @@map("place_recommendation")
+}
+
+model Post {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spacePlaceId String    @map("space_place_id") @db.Uuid
+  authorUserId String    @map("author_user_id") @db.Uuid
+  body         String    @db.VarChar(1000)
+  revision     Int       @default(1)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  spacePlace SpacePlace @relation(fields: [spacePlaceId], references: [id], onDelete: Restrict)
+  author     User       @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  comments   Comment[]
+
+  @@index([spacePlaceId, deletedAt, createdAt(sort: Desc)], map: "post_space_place_active_created_idx")
+  @@index([authorUserId], map: "post_author_user_id_idx")
+  @@map("post")
+}
+
+model Comment {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId       String    @map("post_id") @db.Uuid
+  authorUserId String    @map("author_user_id") @db.Uuid
+  body         String    @db.VarChar(1000)
+  revision     Int       @default(1)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Restrict)
+  author User @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([postId, deletedAt, createdAt], map: "comment_post_active_created_idx")
+  @@index([authorUserId], map: "comment_author_user_id_idx")
+  @@map("comment")
+}
