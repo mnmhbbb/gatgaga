@@ -1,7 +1,7 @@
 # 같가가 문서 시작점
 
-- 최종 업데이트: 2026-09-06
-- 현재 단계: **PostgreSQL·Prisma 기반 완료 → Better Auth·Kakao 인증 세로 기능**
+- 최종 업데이트: 2026-09-07
+- 현재 단계: **Better Auth Runtime 완료 → Kakao 실제 계정 OAuth 검증**
 
 ## 지금 읽을 문서
 
@@ -28,7 +28,8 @@ PRD v1.0 기준선 완료
 → 실제 제품 저장소 초기화와 기술 설계 승인
 → Better Auth·Kakao ADR와 ERD 확정
 → Docker PostgreSQL·Prisma·첫 migration 완료
-→ Better Auth·Kakao 인증 세로 기능 구현
+→ Better Auth Runtime·Next.js auth route 구현 완료
+→ Kakao 설정·실제 계정 인증과 DB 저장 검증
 → Alpha 전 지인 1명 사용성 파일럿
 ```
 

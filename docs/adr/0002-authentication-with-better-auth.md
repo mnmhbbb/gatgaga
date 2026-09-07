@@ -167,3 +167,15 @@ KAKAO_CLIENT_SECRET=   # 서버 전용 Client Secret
 - Kakao 앱 설정: <https://developers.kakao.com/docs/ko/app-setting/app>
 
 버전·Provider scope·Kakao 정책은 변경될 수 있으므로 설치와 배포 직전에 다시 확인한다.
+
+## 구현 상태
+
+2026-09-07 기준으로 다음 Runtime 경계를 구현하고 정적·로컬 요청 검증을 완료했다.
+
+- `server/modules/auth/auth-model-options.ts`: CLI와 Runtime이 공유하는 User·Account 설정
+- `server/modules/auth/auth.ts`: Prisma adapter, Kakao provider와 서버 환경 변수 검증
+- `app/api/auth/[...all]/route.ts`: Better Auth의 Next.js Route Handler
+- `src/features/auth`: 같은 origin route를 호출하는 Kakao 로그인 Client와 버튼
+- `GET /api/auth/get-session`: 로그인 전 `200 null`과 PostgreSQL 연결 확인
+
+실제 OAuth E2E는 Kakao Developers 설정과 서버 환경 변수 등록 후 진행한다. 성공 기준은 callback 완료, HttpOnly session cookie 발급, `user`·`account`·`session` 행 생성이며 `verification`은 Kakao OAuth만으로 생성되지 않아도 정상이다.
