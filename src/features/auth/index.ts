@@ -1,1 +1,1 @@
-export { KakaoLoginButton } from "./kakao-login-button";
+export { KakaoLoginButton } from "./ui/kakao-login-button";

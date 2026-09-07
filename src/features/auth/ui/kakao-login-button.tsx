@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { authClient } from "./auth-client";
+import { authClient } from "../api/auth-client";
 
 export function KakaoLoginButton() {
   const [isPending, setIsPending] = useState(false);
