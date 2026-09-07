@@ -23,7 +23,7 @@
 - 현재 위치 검색은 구현하지 않는다. 지역과 장소명을 함께 검색하고 결과 주소로 위치를 판단한다.
 - Next.js App Router, TypeScript, FSD, Prisma, PostgreSQL, Neon과 Vercel을 사용한다.
 - Better Auth·Kakao 로그인을 사용하고 인증·제품 테이블은 같은 PostgreSQL에 둔다. Membership·Invitation·객체 권한은 직접 구현한다.
-- Prisma 7.10.0과 Better Auth 1.7.2를 정확히 고정했다. 로컬 DB는 Docker PostgreSQL 18.4를 사용한다.
+- Prisma 7.10.0과 Better Auth 1.7.3을 정확히 고정했다. 로컬 DB는 Docker PostgreSQL 18.4를 사용한다.
 - Better Auth core와 제품 ERD를 합친 첫 migration, 부분 unique·CHECK 제약과 rollback smoke test가 통과했다.
 - Better Auth Runtime은 Prisma adapter와 Kakao provider를 사용하며 `/api/auth/[...all]`에 연결했다.
 - Kakao 로그인 버튼은 FSD `features/auth`에 두고 같은 origin의 Better Auth route를 호출한다.

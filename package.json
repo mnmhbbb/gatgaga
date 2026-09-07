@@ -19,10 +19,10 @@
     "db:test-constraints": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/constraints-smoke.sql"
   },
   "dependencies": {
-    "@better-auth/prisma-adapter": "1.7.2",
+    "@better-auth/prisma-adapter": "1.7.3",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
-    "better-auth": "1.7.2",
+    "better-auth": "1.7.3",
     "next": "16.3.3",
     "pg": "8.23.0",
     "react": "19.2.8",
@@ -35,7 +35,7 @@
     "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "auth": "1.7.2",
+    "auth": "1.7.3",
     "dotenv": "17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",

@@ -11,7 +11,7 @@
 - React 19.2, TypeScript strict, Tailwind CSS 4
 - Feature-Sliced Design와 Steiger
 - Prisma 7.10.0, PostgreSQL 18.4(local)·Neon(production)
-- Better Auth 1.7.2·Kakao 로그인과 Vercel
+- Better Auth 1.7.3·Kakao 로그인과 Vercel
 
 ## 실행
 

@@ -35,7 +35,7 @@
 | DB | PostgreSQL 18.4(local), 운영 Neon | local 구현 |
 | 배포 | Vercel | 확정 |
 | 지도·장소 검색 | Kakao Maps JavaScript SDK | 확정 |
-| 인증 | Better Auth 1.7.2 + Kakao OAuth | schema 구현 |
+| 인증 | Better Auth 1.7.3 + Kakao OAuth | schema 구현 |
 | 이미지 | S3 private bucket + Presigned URL | P1 |
 | 테스트 Mock | 필요 시 MSW | 도입 시점 미정 |
 | 오류·분석 | 도구 미정 | 구현 전 결정 |
@@ -220,7 +220,7 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 
 ### 주요 유일 제약
 
-- `Account(issuer, accountId)` unique
+- `Account(providerId, accountId)` unique
 - `SpaceMembership(spaceId, userId)` unique
 - `SpacePlace(spaceId, placeId)` unique
 - `PlaceRecommendation(spacePlaceId, userId)` unique
@@ -291,7 +291,7 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 
 - Better Auth를 애플리케이션에서 운영하고 Kakao를 외부 OAuth IdP로 사용한다.
 - Better Auth의 User·Account·Session·Verification과 제품 테이블을 같은 PostgreSQL·Prisma migration history로 관리한다.
-- `Account(issuer, accountId)`가 Kakao identity와 내부 User를 연결하므로 별도 사용자 동기화 테이블을 만들지 않는다.
+- `Account(providerId, accountId)`가 Kakao identity와 내부 User를 연결하므로 별도 사용자 동기화 테이블을 만들지 않는다.
 - P0는 PostgreSQL 세션을 사용하고 Redis와 cookie cache는 도입하지 않는다.
 - Provider token은 암호화하고 implicit account linking은 비활성화한다.
 - `User.disabledAt`, Session, SpaceMembership과 객체 권한은 모든 Private 요청에서 서버가 확인한다.
@@ -388,7 +388,7 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 ## 11. 구현 순서
 
 1. **완료** — Docker PostgreSQL 18.4·Prisma 7.10.0 기반과 버전 고정
-2. **완료** — Better Auth 1.7.2 core schema와 제품 ERD 병합, 첫 migration·제약 smoke test
+2. **완료** — Better Auth 1.7.3 core schema와 제품 ERD 병합, 첫 migration·제약 smoke test
 3. **다음** — Kakao Login 설정·이메일 스파이크와 Better Auth 세션 연결
 4. Space·Owner Membership 생성과 초대 intent·수락 세로 기능
 5. Place·SpacePlace·Recommendation 데이터 연결

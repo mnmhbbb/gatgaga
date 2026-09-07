@@ -77,7 +77,6 @@ model Session {
 // Better Auth core model. OAuth tokens remain encrypted by the auth configuration.
 model Account {
   id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  issuer                String
   accountId             String    @map("account_id")
   providerId            String    @map("provider_id")
   userId                String    @map("user_id") @db.Uuid
@@ -92,7 +91,7 @@ model Account {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@unique([issuer, accountId], map: "account_issuer_account_id_uidx")
+  @@unique([providerId, accountId], map: "account_provider_id_account_id_uidx")
   @@index([userId], map: "account_user_id_idx")
   @@map("account")
 }

@@ -43,7 +43,6 @@ erDiagram
     ACCOUNT {
         uuid id PK
         uuid user_id FK
-        varchar issuer
         varchar account_id
         varchar provider_id
         text access_token "encrypted nullable"
@@ -209,7 +208,7 @@ P0의 Post는 반드시 하나의 `SpacePlace`에 속한다. `spaceId`는 `Post 
 | 테이블 | 책임 | 핵심 규칙 |
 | --- | --- | --- |
 | `User` | 내부 사용자 루트와 Kakao 프로필 snapshot | `email` unique, `disabledAt`은 서버 전용 접근 차단 값 |
-| `Account` | Kakao 등 외부 로그인 수단 | `(issuer, accountId)` unique, token 암호화 |
+| `Account` | Kakao 등 외부 로그인 수단 | `(providerId, accountId)` unique, token 암호화 |
 | `Session` | DB 기반 로그인 세션 | `token` unique, 만료·사용자 조회 index |
 | `Verification` | 단기 검증 값 | `identifier` index, 만료 행 정리 |
 
@@ -249,7 +248,7 @@ Prisma schema만으로 표현할 수 없는 부분 인덱스와 CHECK는 생성�
 
 | 목적 | PostgreSQL 제약·인덱스 |
 | --- | --- |
-| 외부 계정 중복 방지 | `UNIQUE (issuer, account_id)` |
+| 외부 계정 중복 방지 | `UNIQUE (provider_id, account_id)` |
 | 공간 중복 가입 방지 | `UNIQUE (space_id, user_id)` |
 | 활성 Owner 최대 1명 | `UNIQUE (space_id) WHERE role = 'OWNER' AND revoked_at IS NULL` |
 | 활성 초대 최대 1개 | `UNIQUE (space_id) WHERE revoked_at IS NULL` |
@@ -323,7 +322,7 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 
 ## 10. 구현 순서와 검증
 
-1. **완료** — Docker PostgreSQL 18.4와 Prisma 7.10.0, Better Auth 1.7.2 config를 구성한다.
+1. **완료** — Docker PostgreSQL 18.4와 Prisma 7.10.0, Better Auth 1.7.3 config를 구성한다.
 2. **완료** — `auth generate` 결과와 이 ERD를 비교해 하나의 `schema.prisma`로 합친다.
 3. **완료** — 첫 migration에 부분 인덱스·CHECK·FK 정책을 보강하고 실제 PostgreSQL smoke test를 통과한다.
 4. **다음** — `Kakao 로그인 → createSpace → 초대 복귀 → acceptInvitation` 세로 기능을 integration test와 함께 구현한다.

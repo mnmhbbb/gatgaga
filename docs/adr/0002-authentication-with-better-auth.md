@@ -22,7 +22,7 @@ Private Alpha에는 초대 링크를 받은 사용자가 짧은 절차로 로그
 - Next.js 애플리케이션 안에 **Better Auth**를 구성한다.
 - P0 로그인 Provider는 **Kakao 하나**만 사용한다.
 - Better Auth Prisma adapter를 사용하고 인증 테이블과 제품 테이블을 같은 PostgreSQL에 둔다.
-- 첫 구현 버전은 Better Auth 1.7.2와 Prisma 7.10.0으로 정확히 고정한다.
+- 첫 구현 버전은 Better Auth 1.7.3과 Prisma 7.10.0으로 정확히 고정한다.
 - 로컬은 Docker PostgreSQL, 운영은 Neon PostgreSQL을 사용한다.
 - 비밀번호, 이메일 로그인, OTP와 Better Auth Organizations plugin은 P0에 넣지 않는다.
 - P1의 Google 로그인은 사용자 요구가 확인된 뒤 명시적 계정 연결 UX와 함께 추가한다.
@@ -53,8 +53,8 @@ auth 모듈(Better Auth 소유)
 
 - 인증·제품 테이블 ID는 PostgreSQL UUID로 통일한다.
 - Better Auth에는 `advanced.database.generateId: "uuid"`를 명시한다.
-- Account identity는 `(issuer, accountId)` unique로 식별한다.
-- 고정한 Better Auth 1.7.2에는 `account.identityStrategy` 설정이 없으므로 지원하지 않는 옵션을 임의로 넣지 않는다. 이 버전의 CLI가 생성한 `issuer`와 `accountId`를 Provider namespace로 사용한다.
+- Account identity는 Better Auth 1.7.3 기준인 `(providerId, accountId)` unique로 식별한다.
+- Better Auth 1.7.0~1.7.2에 잠시 도입됐던 `issuer` 필드는 1.7.3에서 제거되었으므로 사용하지 않는다. Better Auth 관련 패키지는 같은 버전으로 함께 올린다.
 - P0는 account linking을 비활성화하고 `disableImplicitLinking: true`를 명시해 같은 이메일만 보고 계정을 자동 연결하지 않는다.
 - P1에서 Google을 추가할 때 로그인된 사용자가 명시적으로 연결하는 화면과 복구 정책을 먼저 만든다.
 
