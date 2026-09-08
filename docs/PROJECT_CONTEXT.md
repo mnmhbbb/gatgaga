@@ -1,8 +1,8 @@
 # 같가가 프로젝트 핸드오프
 
-- 최종 업데이트: 2026-09-07
-- 현재 단계: Better Auth Runtime·Prisma adapter·Next.js auth route 구현 완료
-- 다음 작업: Kakao Developers 설정과 실제 계정 OAuth·인증 3개 Table 저장 검증
+- 최종 업데이트: 2026-09-09
+- 현재 단계: Better Auth·Kakao OAuth 로그인과 서버 세션 기반 화면 분기 완료
+- 다음 작업: 로그인한 사용자의 Space·Owner Membership 원자 생성
 - 저장소: `/Users/mhbaek/dev/nextjs/gatgaga`
 
 ## 한 줄 정의
@@ -26,7 +26,9 @@
 - Prisma 7.10.0과 Better Auth 1.7.3을 정확히 고정했다. 로컬 DB는 Docker PostgreSQL 18.4를 사용한다.
 - Better Auth core와 제품 ERD를 합친 첫 migration, 부분 unique·CHECK 제약과 rollback smoke test가 통과했다.
 - Better Auth Runtime은 Prisma adapter와 Kakao provider를 사용하며 `/api/auth/[...all]`에 연결했다.
-- Kakao 로그인 버튼은 FSD `features/auth`에 두고 같은 origin의 Better Auth route를 호출한다.
+- Kakao 로그인·로그아웃 버튼은 FSD `features/auth`에 두고 같은 origin의 Better Auth route를 호출한다.
+- 서버에서 Better Auth 세션을 조회해 비로그인 상태에는 로그인 화면, 로그인 상태에는 `내 공간`을 렌더링한다.
+- Kakao OAuth callback, HttpOnly session cookie, User·Account·Session 저장과 로그아웃·재로그인을 실제 계정으로 검증했다.
 - 현재 `gatgaga`가 실제 제품 저장소이고 사용성 프로토타입은 `../gatgaga-prototype`에 보존한다.
 
 ## 참고 프로토타입
@@ -53,11 +55,11 @@
 
 ## 다음 순서
 
-1. `BETTER_AUTH_SECRET`, Kakao REST API 키·Client Secret을 local 환경에 설정한다.
-2. Kakao Login·동의 항목·`http://localhost:3000/api/auth/callback/kakao`를 등록한다.
-3. 실제 계정 2개로 로그인하고 User·Account·Session 저장과 이메일 제공을 검증한다.
-4. 로그인한 User의 Space·Owner Membership 동시 생성 transaction을 구현한다.
-5. 초대 복귀·수락 세로 기능을 구현한 뒤 장소 데이터 연결로 이동한다.
+1. 서버 세션과 `User.disabledAt`을 검사하는 인증 사용자 guard를 만든다.
+2. 로그인한 User의 Space·Owner Membership 동시 생성 transaction을 구현한다.
+3. 공간 생성 입력 검증과 성공·실패 통합 테스트를 추가한다.
+4. 초대 복귀·수락 세로 기능을 구현한다.
+5. Alpha 배포 전 별도 실제 계정으로 가입·초대·권한 흐름을 교차 검증한다.
 
 완료한 데이터 기반:
 

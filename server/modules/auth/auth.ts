@@ -42,6 +42,9 @@ function createAuth() {
       kakao: {
         clientId: env.KAKAO_CLIENT_ID,
         clientSecret: env.KAKAO_CLIENT_SECRET,
+        // Kakao Developers의 필수/선택 동의 설정을 그대로 사용한다.
+        // Better Auth 기본 scope를 보내면 거절한 선택 항목을 재로그인마다 다시 요청한다.
+        disableDefaultScope: true,
       },
     },
     ...authModelOptions,

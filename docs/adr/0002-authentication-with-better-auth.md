@@ -68,7 +68,8 @@ auth 모듈(Better Auth 소유)
 
 ### Kakao 사용자 정보
 
-- Better Auth의 Kakao 기본 profile에 필요한 `account_email`, `profile_nickname`, `profile_image`만 사용한다.
+- Kakao Developers에서 `account_email`·`profile_nickname`은 필수, `profile_image`는 선택 동의로 설정한다.
+- Better Auth Kakao Provider에는 `disableDefaultScope: true`를 적용해 인가 요청의 `scope` 파라미터를 생략한다. Kakao Developers의 필수·선택 동의 구성을 기본값으로 사용하고, 사용자가 거절한 선택 항목을 재로그인마다 추가 동의로 다시 요청하지 않는다.
 - Kakao 앱을 개인 개발자 비즈 앱으로 전환하고 이메일 동의 항목을 필수로 설정한다.
 - 이메일이 없는 사용자를 위해 가짜 이메일을 만들지 않는다. 인증 구현 첫 스파이크에서 실제 계정 2개로 이메일 반환·동의 거부를 검증하고, 필수 이메일을 받지 못하면 이유와 재시도 방법을 안내하고 가입을 중단한다.
 - 이메일은 연락·표시용 속성이며 제품 권한의 식별자로 사용하지 않는다. 권한은 내부 `User.id`로 판단한다.
@@ -170,12 +171,14 @@ KAKAO_CLIENT_SECRET=   # 서버 전용 Client Secret
 
 ## 구현 상태
 
-2026-09-07 기준으로 다음 Runtime 경계를 구현하고 정적·로컬 요청 검증을 완료했다.
+2026-09-09 기준으로 Runtime 경계와 실제 Kakao OAuth E2E 검증을 완료했다.
 
 - `server/modules/auth/auth-model-options.ts`: CLI와 Runtime이 공유하는 User·Account 설정
 - `server/modules/auth/auth.ts`: Prisma adapter, Kakao provider와 서버 환경 변수 검증
 - `app/api/auth/[...all]/route.ts`: Better Auth의 Next.js Route Handler
-- `src/features/auth`: 같은 origin route를 호출하는 Kakao 로그인 Client와 버튼
+- `src/features/auth`: 같은 origin route를 호출하는 Kakao 로그인·로그아웃 Client와 버튼
+- `server/modules/auth/get-current-session.ts`: 요청 cookie를 전달해 서버에서 현재 세션 조회
+- `app/page.tsx`: 서버 세션을 기준으로 로그인 화면과 `내 공간` 분기
 - `GET /api/auth/get-session`: 로그인 전 `200 null`과 PostgreSQL 연결 확인
 
-실제 OAuth E2E는 Kakao Developers 설정과 서버 환경 변수 등록 후 진행한다. 성공 기준은 callback 완료, HttpOnly session cookie 발급, `user`·`account`·`session` 행 생성이며 `verification`은 Kakao OAuth만으로 생성되지 않아도 정상이다.
+실제 계정으로 callback 완료, HttpOnly session cookie 발급, `user`·`account`·`session` 행 생성, 새로고침 세션 유지, 로그아웃과 재로그인을 확인했다. `disableDefaultScope: true`로 인가 요청의 `scope` 파라미터가 생략되고 Kakao Developers의 필수·선택 동의 구성이 적용되는 것도 확인했다. `verification`은 Kakao OAuth만으로 생성되지 않아도 정상이다.

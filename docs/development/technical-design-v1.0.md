@@ -35,7 +35,7 @@
 | DB | PostgreSQL 18.4(local), 운영 Neon | local 구현 |
 | 배포 | Vercel | 확정 |
 | 지도·장소 검색 | Kakao Maps JavaScript SDK | 확정 |
-| 인증 | Better Auth 1.7.3 + Kakao OAuth | schema 구현 |
+| 인증 | Better Auth 1.7.3 + Kakao OAuth | E2E 완료 |
 | 이미지 | S3 private bucket + Presigned URL | P1 |
 | 테스트 Mock | 필요 시 MSW | 도입 시점 미정 |
 | 오류·분석 | 도구 미정 | 구현 전 결정 |
@@ -90,6 +90,18 @@ prisma/
 - 권한, 트랜잭션과 유스케이스는 `server/modules`에 둔다.
 - DB 레코드를 그대로 브라우저에 반환하지 않고 명시적 DTO로 변환한다.
 - 서버 정책은 UI에서 버튼을 숨긴 것과 무관하게 항상 다시 검사한다.
+
+### 클라이언트 상태 관리
+
+- 로그인 여부와 권한 판정은 Better Auth 서버 세션을 기준으로 한다. 인증 상태를 Zustand에 복제하지 않는다.
+- Client Component에서 서버 데이터를 조회할 때는 TanStack Query를 사용한다. `useEffect`에서 API를 직접 호출해 `loading`, `error`, `data`를 따로 관리하지 않는다.
+- query key와 `queryOptions`는 해당 도메인 Entity의 `api` 세그먼트가 소유하고 public API로 노출한다. Feature, Widget, View는 공개된 query options를 소비한다.
+- 첫 화면에 서버 데이터가 필요하면 Server Component에서 prefetch하고 `HydrationBoundary`로 전달한다. 이후 재조회와 mutation은 같은 Query Cache를 사용한다.
+- mutation 성공 후에는 영향받는 query key를 정확히 invalidate하거나, 응답으로 안전하게 갱신할 수 있을 때만 `setQueryData`를 사용한다.
+- QueryClient의 `staleTime`, `gcTime`, `retry`, 오류 로깅 기본값은 `shared/api` 한 곳에서 관리한다. 개별 query가 제품 요구 없이 전역 정책을 덮어쓰지 않는다.
+- Zustand는 modal, toast, 지도 선택 상태처럼 여러 Client Component가 공유하는 UI 상태에만 사용한다. 서버 응답과 Query Cache를 Zustand에 중복 저장하지 않는다.
+- Zustand 소비부는 필요한 state와 action만 selector로 구독한다. 한 번에 store 전체를 구독하지 않는다.
+- TanStack Query와 Zustand Provider·테스트 wrapper는 첫 실제 사용 기능과 함께 추가한다. 사용처 없이 의존성만 먼저 설치하지 않는다.
 
 ## 4. Kakao Maps 설계와 선택 근거
 
@@ -389,8 +401,8 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 
 1. **완료** — Docker PostgreSQL 18.4·Prisma 7.10.0 기반과 버전 고정
 2. **완료** — Better Auth 1.7.3 core schema와 제품 ERD 병합, 첫 migration·제약 smoke test
-3. **다음** — Kakao Login 설정·이메일 스파이크와 Better Auth 세션 연결
-4. Space·Owner Membership 생성과 초대 intent·수락 세로 기능
+3. **완료** — Kakao Login 설정·동의 항목과 Better Auth 세션 연결
+4. **다음** — Space·Owner Membership 원자 생성
 5. Place·SpacePlace·Recommendation 데이터 연결
 6. Post·Comment와 작성자 권한·revision
 7. 장소 제거·실행 취소·복구 동시성 테스트
