@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "fsd": "steiger ./src",
+    "test": "node --test --experimental-strip-types server/modules/space/*.test.mjs",
     "verify": "pnpm lint && pnpm check-types && pnpm fsd && pnpm build",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
@@ -16,7 +17,8 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
-    "db:test-constraints": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/constraints-smoke.sql"
+    "db:test-constraints": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/constraints-smoke.sql",
+    "db:test-space-transaction": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/create-space-transaction-smoke.sql"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.7.3",
