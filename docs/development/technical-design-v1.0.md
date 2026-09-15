@@ -1,7 +1,7 @@
 # 같가가 기술 설계 v1.0
 
-- 최종 업데이트: 2026-09-06
-- 상태: **데이터 기반 구현 완료 — 인증 세로 기능 착수**
+- 최종 업데이트: 2026-09-15
+- 상태: **인증·Space 생성 세로 기능 완료 — 초대 복귀·수락 착수**
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
@@ -402,10 +402,11 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 1. **완료** — Docker PostgreSQL 18.4·Prisma 7.10.0 기반과 버전 고정
 2. **완료** — Better Auth 1.7.3 core schema와 제품 ERD 병합, 첫 migration·제약 smoke test
 3. **완료** — Kakao Login 설정·동의 항목과 Better Auth 세션 연결
-4. **다음** — Space·Owner Membership 원자 생성
-5. Place·SpacePlace·Recommendation 데이터 연결
-6. Post·Comment와 작성자 권한·revision
-7. 장소 제거·실행 취소·복구 동시성 테스트
+4. **완료** — Space·Owner Membership 원자 생성과 Private Space 접근 검사
+5. **다음** — 초대 링크 발급·로그인 복귀·Membership 멱등 수락
+6. Place·SpacePlace·Recommendation 데이터 연결
+7. Post·Comment와 작성자 권한·revision
+8. 장소 제거·실행 취소·복구 동시성 테스트
 8. E2E·관측·Vercel Preview
 9. 지인 Private Alpha 배포
 

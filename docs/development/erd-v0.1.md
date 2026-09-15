@@ -1,6 +1,6 @@
 # 같가가 ERD v0.1
 
-- 최종 업데이트: 2026-09-06
+- 최종 업데이트: 2026-09-15
 - 상태: **구현 기준선 — 첫 Prisma migration 적용·검증 완료**
 - 인증 결정: [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)
 - 제품 기준: [`../product/prd-v1.0.md`](../product/prd-v1.0.md)
@@ -325,8 +325,9 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 1. **완료** — Docker PostgreSQL 18.4와 Prisma 7.10.0, Better Auth 1.7.3 config를 구성한다.
 2. **완료** — `auth generate` 결과와 이 ERD를 비교해 하나의 `schema.prisma`로 합친다.
 3. **완료** — 첫 migration에 부분 인덱스·CHECK·FK 정책을 보강하고 실제 PostgreSQL smoke test를 통과한다.
-4. **다음** — `Kakao 로그인 → createSpace → 초대 복귀 → acceptInvitation` 세로 기능을 integration test와 함께 구현한다.
-5. 장소 추가·추천·글·댓글·제거의 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
+4. **부분 완료** — `Kakao 로그인 → createSpace` 세로 기능과 transaction rollback을 검증했다.
+5. **다음** — `초대 발급 → 로그인 복귀 → acceptInvitation`을 반복·동시 수락 integration test와 함께 구현한다.
+6. 장소 추가·추천·글·댓글·제거의 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
 
 최소 검증 시나리오:
 

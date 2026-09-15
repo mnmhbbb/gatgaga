@@ -1,8 +1,8 @@
 # 같가가 프로젝트 핸드오프
 
-- 최종 업데이트: 2026-09-09
-- 현재 단계: Better Auth·Kakao OAuth 로그인과 서버 세션 기반 화면 분기 완료
-- 다음 작업: 로그인한 사용자의 Space·Owner Membership 원자 생성
+- 최종 업데이트: 2026-09-15
+- 현재 단계: Better Auth·Kakao OAuth 인증과 Space·Owner Membership 원자 생성 완료
+- 다음 작업: 초대 링크 발급·로그인 복귀·멱등 수락 세로 기능
 - 저장소: `/Users/mhbaek/dev/nextjs/gatgaga`
 
 ## 한 줄 정의
@@ -29,6 +29,9 @@
 - Kakao 로그인·로그아웃 버튼은 FSD `features/auth`에 두고 같은 origin의 Better Auth route를 호출한다.
 - 서버에서 Better Auth 세션을 조회해 비로그인 상태에는 로그인 화면, 로그인 상태에는 `내 공간`을 렌더링한다.
 - Kakao OAuth callback, HttpOnly session cookie, User·Account·Session 저장과 로그아웃·재로그인을 실제 계정으로 검증했다.
+- 서버 세션과 DB User를 대조하는 `requireCurrentUser` guard를 구현했다.
+- 공간 이름을 trim 후 1~40자로 검증하고 Space와 OWNER Membership을 transaction으로 생성한다.
+- 내 공간 목록, 공간 생성 화면과 Private Space 멤버 접근 검사를 연결했다.
 - 현재 `gatgaga`가 실제 제품 저장소이고 사용성 프로토타입은 `../gatgaga-prototype`에 보존한다.
 
 ## 참고 프로토타입
@@ -55,10 +58,10 @@
 
 ## 다음 순서
 
-1. 서버 세션과 `User.disabledAt`을 검사하는 인증 사용자 guard를 만든다.
-2. 로그인한 User의 Space·Owner Membership 동시 생성 transaction을 구현한다.
-3. 공간 생성 입력 검증과 성공·실패 통합 테스트를 추가한다.
-4. 초대 복귀·수락 세로 기능을 구현한다.
+1. **완료** — 서버 세션과 `User.disabledAt`을 검사하는 인증 사용자 guard를 만든다.
+2. **완료** — 로그인한 User의 Space·Owner Membership 동시 생성 transaction을 구현한다.
+3. **완료** — 공간 생성 입력 검증과 성공·실패·rollback 검증을 추가한다.
+4. **다음** — 초대 링크 발급·로그인 복귀·멱등 수락 세로 기능을 구현한다.
 5. Alpha 배포 전 별도 실제 계정으로 가입·초대·권한 흐름을 교차 검증한다.
 
 완료한 데이터 기반:

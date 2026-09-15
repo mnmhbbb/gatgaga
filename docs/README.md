@@ -1,7 +1,9 @@
 # 같가가 문서 시작점
 
-- 최종 업데이트: 2026-09-07
-- 현재 단계: **Better Auth Runtime 완료 → Kakao 실제 계정 OAuth 검증**
+- 최종 업데이트: 2026-09-15
+- 현재 단계: **Space·Owner Membership 원자 생성 완료 → 초대 복귀·수락 세로 기능**
+
+새 작업에서 이어갈 때는 먼저 [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md)로 현재 상태와 다음 작업을 확인한다.
 
 ## 지금 읽을 문서
 
@@ -29,15 +31,16 @@ PRD v1.0 기준선 완료
 → Better Auth·Kakao ADR와 ERD 확정
 → Docker PostgreSQL·Prisma·첫 migration 완료
 → Better Auth Runtime·Next.js auth route 구현 완료
-→ Kakao 설정·실제 계정 인증과 DB 저장 검증
-→ Alpha 전 지인 1명 사용성 파일럿
+→ Kakao 설정·실제 계정 인증과 DB 저장 검증 완료
+→ Space·Owner Membership 원자 생성 완료
+→ 초대 복귀·수락 세로 기능
+→ 장소·추천·글·댓글 세로 기능
+→ Vercel·Neon 배포와 Alpha 전 지인 사용성 파일럿
 ```
-
-현재 `gatgaga` 폴더가 실제 제품 저장소다. 사용성 검증용 UI 프로토타입은 형제 폴더 `../gatgaga-prototype`에 읽기 전용으로 보존하고, 확정된 토큰과 UI 패턴만 선별 이식한다.
 
 ## 핸드오프
 
-다른 PC나 새 작업에서 이어갈 때는 [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md)와 위 현행 문서를 전달한다.
+다른 PC나 새 작업에서 이어갈 때는 [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md)와 필요한 현행 문서를 전달한다.
 
 ## 과거 문서
 
