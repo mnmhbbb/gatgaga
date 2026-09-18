@@ -64,14 +64,14 @@ auth 모듈(Better Auth 소유)
 - Production cookie의 `Secure`, `HttpOnly`, `SameSite=Lax`와 trusted origin을 배포 E2E에서 확인한다.
 - Provider token은 `encryptOAuthTokens: true`로 암호화하고 브라우저 응답·애플리케이션 로그에 노출하지 않는다.
 - Kakao API를 로그인 외 목적으로 사용하지 않으며 최소 scope만 요청한다.
-- 모든 Private 요청은 유효한 세션뿐 아니라 `User.disabledAt IS NULL`과 활성 Membership을 서버에서 다시 검사한다.
+- 기존 Private 리소스 요청은 유효한 세션뿐 아니라 `User.disabledAt IS NULL`과 활성 Membership을 서버에서 다시 검사한다. 초대 진입에서 공간 이름만 보여주는 예외는 아래 초대 흐름을 따른다.
 
 ### Kakao 사용자 정보
 
 - Kakao Developers에서 `account_email`·`profile_nickname`은 필수, `profile_image`는 선택 동의로 설정한다.
 - Better Auth Kakao Provider에는 `disableDefaultScope: true`를 적용해 인가 요청의 `scope` 파라미터를 생략한다. Kakao Developers의 필수·선택 동의 구성을 기본값으로 사용하고, 사용자가 거절한 선택 항목을 재로그인마다 추가 동의로 다시 요청하지 않는다.
 - Kakao 앱을 개인 개발자 비즈 앱으로 전환하고 이메일 동의 항목을 필수로 설정한다.
-- 이메일이 없는 사용자를 위해 가짜 이메일을 만들지 않는다. 인증 구현 첫 스파이크에서 실제 계정 2개로 이메일 반환·동의 거부를 검증하고, 필수 이메일을 받지 못하면 이유와 재시도 방법을 안내하고 가입을 중단한다.
+- 이메일이 없는 사용자를 위해 가짜 이메일을 만들지 않는다. 로컬 OAuth E2E와 별도로 Alpha 전 실제 계정 2개로 이메일 반환·동의 거부를 교차 검증하고, 필수 이메일을 받지 못하면 이유와 재시도 방법을 안내하고 가입을 중단한다.
 - 이메일은 연락·표시용 속성이며 제품 권한의 식별자로 사용하지 않는다. 권한은 내부 `User.id`로 판단한다.
 
 ### 초대 후 로그인 복귀
@@ -81,25 +81,27 @@ auth 모듈(Better Auth 소유)
 → 서버에서 token hash 검증
 → invitationId를 담은 10분짜리 서명된 HttpOnly intent cookie 설정
 → 원본 token이 없는 /invite/continue로 이동
+→ 유효한 초대의 공간 이름만 표시
 → Kakao 로그인
 → /invite/continue 복귀
-→ 로그인 계정과 공간 확인
+→ 로그인 계정·공간 이름·초대 상태 확인
 → 사용자가 참여하기 선택
 → Membership 멱등 생성
 ```
 
-- 원본 초대 토큰을 OAuth callback URL, 로그, 분석 이벤트와 DB에 저장하지 않는다.
+- 원본 초대 토큰을 OAuth callback URL, 로그, 분석 이벤트에 남기지 않는다. DB에는 Owner의 동일 링크 재복사를 위해 암호문을 저장한다. 저장 방식은 [`0003-invitation-link-lifecycle.md`](0003-invitation-link-lifecycle.md)에서 결정한다.
+- 초대 화면은 현재 활성 초대인지 서버에서 재확인한 뒤 공간 이름만 표시한다. 무효·폐기된 초대에는 이름을 표시하지 않으며, 콘텐츠·멤버 목록 접근은 Membership으로만 허용한다.
 - callback URL은 내부 상대 경로 allowlist만 허용해 open redirect를 막는다.
 - 로그인 성공만으로 초대를 자동 수락하지 않으며 GET 요청으로 Membership을 만들지 않는다.
-- intent cookie가 만료되어도 원본 초대 링크에서 다시 시작할 수 있다.
+- 10분은 로그인 복귀용 intent cookie의 유효 시간이며 초대 링크의 만료 시간이 아니다. 초대 링크는 자동 만료하지 않고, intent cookie가 만료되어도 활성 원본 링크에서 다시 시작할 수 있다.
 
 ## Kakao 설정 시점
 
-키와 활성화는 **ERD 단계가 아니라 첫 인증 세로 기능 구현을 시작할 때** 설정한다. 단, 인증 구현의 첫 작업으로 완료해야 하는 출시 차단 스파이크다. 현재는 어떤 값이 필요한지만 고정한다. 이렇게 하면 실제 local·staging·production callback URL을 기준으로 한 번에 검증할 수 있다.
+결정 당시 키와 활성화는 **ERD 단계가 아니라 첫 인증 세로 기능 구현을 시작할 때** 설정하기로 했다. 로컬 Kakao OAuth 설정과 실제 계정 E2E는 완료했다. 별도 계정 교차 검증과 staging·production callback 설정은 해당 환경을 만들 때 확인한다.
 
-### 구현 시작 시 설정할 것
+### 설정·배포 체크리스트
 
-1. 현재 지도에 사용 중인 Kakao Developers 앱을 같가가 서비스 앱으로 재사용한다.
+1. 프로토타입 지도에 사용한 Kakao Developers 앱을 같가가 서비스 앱으로 재사용한다.
 2. 개인 개발자 비즈 앱 전환과 본인 인증을 완료한다.
 3. Kakao Login과 `account_email`, nickname, profile image 동의 항목을 활성화하고 Client Secret을 발급·활성화한다.
 4. local callback `http://localhost:3000/api/auth/callback/kakao`와 확정된 production callback을 등록한다.
@@ -171,7 +173,7 @@ KAKAO_CLIENT_SECRET=   # 서버 전용 Client Secret
 
 ## 구현 상태
 
-2026-09-09 기준으로 Runtime 경계와 실제 Kakao OAuth E2E 검증을 완료했다.
+아래는 2026-09-09 인증 스파이크의 구현 기록이다. Runtime 경계와 실제 Kakao OAuth E2E 검증을 완료했다.
 
 - `server/modules/auth/auth-model-options.ts`: CLI와 Runtime이 공유하는 User·Account 설정
 - `server/modules/auth/auth.ts`: Prisma adapter, Kakao provider와 서버 환경 변수 검증
@@ -182,3 +184,5 @@ KAKAO_CLIENT_SECRET=   # 서버 전용 Client Secret
 - `GET /api/auth/get-session`: 로그인 전 `200 null`과 PostgreSQL 연결 확인
 
 실제 계정으로 callback 완료, HttpOnly session cookie 발급, `user`·`account`·`session` 행 생성, 새로고침 세션 유지, 로그아웃과 재로그인을 확인했다. `disableDefaultScope: true`로 인가 요청의 `scope` 파라미터가 생략되고 Kakao Developers의 필수·선택 동의 구성이 적용되는 것도 확인했다. `verification`은 Kakao OAuth만으로 생성되지 않아도 정상이다.
+
+별도 실제 계정의 가입·초대·권한 교차 검증과 운영 callback·cookie 설정 검증은 아직 완료되지 않았다. 진행 상태는 [`../PROJECT_CONTEXT.md`](../PROJECT_CONTEXT.md)를 기준으로 확인한다.

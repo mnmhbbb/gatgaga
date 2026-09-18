@@ -1,6 +1,6 @@
 # 같가가 ERD v0.1
 
-- 최종 업데이트: 2026-09-15
+- 최종 업데이트: 2026-09-19
 - 상태: **구현 기준선 — 첫 Prisma migration 적용·검증 완료**
 - 인증 결정: [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)
 - 제품 기준: [`../product/prd-v1.0.md`](../product/prd-v1.0.md)
@@ -15,7 +15,7 @@
 4. soft delete 대상은 원본 행을 재사용해 복구하고, 같은 의미의 새 행을 만들지 않는다.
 5. 확인된 P1 확장 지점만 보존하고 랭킹·신고·이미지 등 미확정 테이블은 미리 만들지 않는다.
 
-다이어그램은 논리 PostgreSQL 타입을 사용한다. 정확한 길이, enum, `ON DELETE`와 부분 인덱스는 아래 사전에 정의하고 Prisma schema·SQL migration은 다음 단계에서 생성한다.
+다이어그램은 논리 PostgreSQL 타입을 사용한다. 정확한 길이, enum, `ON DELETE`와 부분 인덱스는 아래 사전 및 이미 적용된 Prisma schema·SQL migration에서 확인한다.
 
 ## 2. 인증과 공간 접근
 
@@ -220,12 +220,13 @@ P0에는 별도 `ProductUser`나 `UserProfile`을 만들지 않는다. `disabled
 | --- | --- | --- |
 | `Space` | 지속되는 장소 협업 단위 | name 1~40자, P0 생성은 `PRIVATE`만 허용 |
 | `SpaceMembership` | User와 Space의 역할·활성 관계 | `(spaceId, userId)` unique, `revokedAt IS NULL`이면 활성 |
-| `SpaceInvitation` | 공유 가능한 초대 권한 | 원문 대신 SHA-256 hash 저장, 자동 만료 없음 |
+| `SpaceInvitation` | 공유 가능한 초대 권한 | 현재 DB는 SHA-256 hash만 저장하며 자동 만료 없음. 초대 구현 시 같은 링크 재복사용 인증된 암호문 필드를 migration으로 추가 |
 
 - `Space.visibility`는 `PRIVATE | PUBLIC`이다. P0 API는 `PRIVATE`만 입력받고 P1에서 `PUBLIC`을 연다.
 - `Space.createdByUserId`는 감사 정보이고 현재 Owner는 Membership의 `role`로 판단한다. 둘은 생성자와 현재 권한이라는 서로 다른 사실이다.
 - 활성 Owner는 Space당 최대 1명이다. 최소 1명 유지는 생성·이전 transaction으로 보장한다.
-- 활성 Invitation도 Space당 최대 1명이다. 재발급 transaction은 기존 행을 폐기하고 새 행을 만든다.
+- 활성 Invitation도 Space당 최대 1개다. 재발급 transaction은 기존 행을 폐기하고 새 행을 만든다.
+- Owner의 활성 링크 재복사는 기존 행과 토큰을 그대로 사용한다. 암호문 필드는 복사용이며, 참여 시에는 해시로 활성 초대를 조회한다. 암호화 키는 DB와 분리된 서버 비밀값으로 관리한다. 위 다이어그램은 현재 적용된 schema이므로 예정 필드는 아직 표시하지 않았다.
 
 ### 장소와 콘텐츠
 
@@ -325,7 +326,7 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 1. **완료** — Docker PostgreSQL 18.4와 Prisma 7.10.0, Better Auth 1.7.3 config를 구성한다.
 2. **완료** — `auth generate` 결과와 이 ERD를 비교해 하나의 `schema.prisma`로 합친다.
 3. **완료** — 첫 migration에 부분 인덱스·CHECK·FK 정책을 보강하고 실제 PostgreSQL smoke test를 통과한다.
-4. **부분 완료** — `Kakao 로그인 → createSpace` 세로 기능과 transaction rollback을 검증했다.
+4. **완료** — 로컬 `Kakao 로그인 → createSpace` 세로 기능과 transaction rollback을 검증했다. 별도 계정 교차 검증은 Alpha 전 남아 있다.
 5. **다음** — `초대 발급 → 로그인 복귀 → acceptInvitation`을 반복·동시 수락 integration test와 함께 구현한다.
 6. 장소 추가·추천·글·댓글·제거의 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
 

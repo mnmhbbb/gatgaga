@@ -1,7 +1,7 @@
 # 같가가 기술 설계 v1.0
 
-- 최종 업데이트: 2026-09-15
-- 상태: **인증·Space 생성 세로 기능 완료 — 초대 복귀·수락 착수**
+- 최종 업데이트: 2026-09-19
+- 상태: **인증·Space 생성 세로 기능 완료 — 초대 복귀·수락 다음 작업**
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
@@ -42,7 +42,9 @@
 
 ## 3. 저장소와 애플리케이션 경계
 
-현재 UI 프로토타입은 `gatgaga-prototype` 폴더에 읽기 전용 참고 자료로 보존한다. 실제 제품은 새 `gatgaga` 저장소에서 시작하고, 확정된 문서와 디자인 토큰 및 검증된 UI 패턴만 선별해 이식한다. Mock reducer, 임시 시나리오 라우트와 프로토타입 전용 데이터는 이식하지 않는다.
+UI 프로토타입은 별도 `gatgaga-prototype` 폴더에 읽기 전용 참고 자료로 보존한다. 이 `gatgaga` 저장소에서 실제 제품을 개발 중이며, 확정된 문서와 디자인 토큰 및 검증된 UI 패턴만 선별해 이식한다. Mock reducer, 임시 시나리오 라우트와 프로토타입 전용 데이터는 이식하지 않는다.
+
+아래 트리는 **목표 경계**다. 현재는 `src/features`, `src/shared`, `server/modules/auth`, `server/modules/space`, `server/db` 등 실제 사용처만 만들었으며 나머지 레이어·모듈을 미리 생성하지 않는다.
 
 ```text
 app/                  Next.js 라우트와 프레임워크 진입점
@@ -86,12 +88,14 @@ prisma/
 
 ### 서버 규칙
 
-- Route Handler와 Server Action은 입력·출력과 인증 컨텍스트를 전달하는 얇은 경계다.
-- 권한, 트랜잭션과 유스케이스는 `server/modules`에 둔다.
+- Route Handler와 Server Action은 위치와 무관하게 입력·결과를 다루는 얇은 경계다.
+- 세션 조회, 권한, 트랜잭션과 유스케이스는 `server/modules`에서 서버 측으로 검증한다.
 - DB 레코드를 그대로 브라우저에 반환하지 않고 명시적 DTO로 변환한다.
 - 서버 정책은 UI에서 버튼을 숨긴 것과 무관하게 항상 다시 검사한다.
 
 ### 클라이언트 상태 관리
+
+현재 제품은 Server Component와 필요한 Client Component만 사용하며 TanStack Query·Zustand는 설치하지 않았다. 아래 규칙은 실제 클라이언트 서버 상태·공유 UI 상태가 생겨 도입할 때 적용할 설계다.
 
 - 로그인 여부와 권한 판정은 Better Auth 서버 세션을 기준으로 한다. 인증 상태를 Zustand에 복제하지 않는다.
 - Client Component에서 서버 데이터를 조회할 때는 TanStack Query를 사용한다. `useEffect`에서 API를 직접 호출해 `loading`, `error`, `data`를 따로 관리하지 않는다.
@@ -105,7 +109,7 @@ prisma/
 
 ## 4. Kakao Maps 설계와 선택 근거
 
-### 현재 구현
+### 프로토타입에서 검증한 구현 — 제품에는 아직 미이식
 
 ```text
 브라우저
@@ -115,25 +119,25 @@ prisma/
   └─ Kakao Map과 Marker 렌더링
 ```
 
-- JavaScript 키가 있으면 실제 Kakao Places와 Map을 사용한다.
-- 키가 없으면 UI 개발을 위한 Mock 검색·지도 미리보기로 전환한다.
-- 환경 변수는 `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`를 사용한다.
+- 프로토타입은 JavaScript 키가 있으면 실제 Kakao Places와 Map을 사용한다.
+- 프로토타입은 키가 없으면 UI 개발을 위한 Mock 검색·지도 미리보기로 전환한다.
+- 프로토타입의 환경 변수는 `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`를 사용한다. 제품에 검색·지도를 이식할 때 설정과 fallback 정책을 다시 확인한다.
 - Kakao Developers에는 로컬과 배포 도메인을 JavaScript SDK 도메인으로 등록한다.
 - JavaScript 키는 브라우저에 노출되는 식별자이므로 비밀값으로 취급하지 않지만, 허용 도메인과 쿼터를 제한한다.
 - 향후 REST API Admin/Secret 키는 서버 환경 변수에만 보관한다.
 
-### 장소 검색 요청이 Next.js Network 요청처럼 보이지 않는 이유
+### 프로토타입 장소 검색 요청이 Next.js Network 요청처럼 보이지 않는 이유
 
-현재 검색은 우리 `/api/...` Route Handler를 호출하지 않는다. 브라우저에서 로드한 Kakao SDK의 `Places.keywordSearch`가 Kakao로 직접 요청하고 callback으로 결과를 돌려준다.
+프로토타입 검색은 우리 `/api/...` Route Handler를 호출하지 않는다. 브라우저에서 로드한 Kakao SDK의 `Places.keywordSearch`가 Kakao로 직접 요청하고 callback으로 결과를 돌려준다.
 
 Chrome DevTools에서 확인할 때:
 
-1. Network 필터 문자열을 비운다. 현재 확인 화면에는 `main` 필터가 남아 있어 SDK 본체만 보였다.
+1. Network 필터 문자열을 비운다. 프로토타입 확인 당시 `main` 필터가 남아 있어 SDK 본체만 보였다.
 2. `All`에서 검색하고 필요하면 `Fetch/XHR`, `JS`, `Other`를 함께 본다.
 3. 검색 직전에 Network 기록을 지운 뒤 검색 버튼을 누른다.
 4. SDK 내부 요청은 구현 방식에 따라 일반 애플리케이션 fetch와 다른 Type으로 표시될 수 있다.
 
-응답 데이터는 `search-place-candidates.ts`에서 Kakao callback으로 받고 `PlaceCandidate`로 변환한 뒤 React state에 저장한다. 따라서 서버 터미널에는 별도 API 로그가 남지 않는다.
+프로토타입의 `search-place-candidates.ts`는 Kakao callback 응답을 `PlaceCandidate`로 변환한 뒤 React state에 저장한다. 따라서 이 흐름에서는 서버 터미널에 별도 API 로그가 남지 않는다.
 
 ### 카카오를 선택한 이유
 
@@ -169,7 +173,7 @@ NAVER도 동적 지도와 Marker를 구현할 수 있고 작은 서비스는 무
 
 Private Alpha에는 구현하지 않는다.
 
-- 현재 코드의 `keywordSearch(query)`에는 위치 좌표를 전달하지 않는다.
+- 프로토타입의 `keywordSearch(query)`에는 위치 좌표를 전달하지 않는다. 제품에는 검색이 아직 없다.
 - 결과 주소는 Kakao가 각 장소 정보로 반환한 값이며 사용자 현재 위치를 사용한 것이 아니다.
 - 사용자는 `지역 + 장소명`으로 검색 범위를 좁힌다.
 - Browser Geolocation 권한, 정확도, 거부·시간 초과 처리는 사용자 요구가 확인될 때 별도 기술 스파이크로 다룬다.
@@ -223,7 +227,7 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 | Verification | Better Auth가 사용하는 단기 검증 데이터 |
 | Space | 이름, visibility와 생성 감사 정보 |
 | SpaceMembership | User-Space 관계, Owner/Member, 상태 |
-| SpaceInvitation | 해시된 토큰, 활성·폐기 상태, 생성자 |
+| SpaceInvitation | 조회용 토큰 해시, Owner 재복사용 암호문, 활성·폐기 상태, 생성자. 암호문 필드는 초대 구현 시 migration으로 추가 |
 | Place | Provider 또는 직접 등록 장소의 사실 정보 |
 | SpacePlace | Space에 저장된 Place와 제거 상태 |
 | PlaceRecommendation | 멤버의 장소 추천 사실과 시각 |
@@ -237,7 +241,9 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 - `SpacePlace(spaceId, placeId)` unique
 - `PlaceRecommendation(spacePlaceId, userId)` unique
 - Kakao Place: `(sourceType, providerPlaceId)` unique
-- 활성 초대: Space당 하나만 허용하도록 트랜잭션 또는 부분 인덱스로 보장
+- 활성 초대: 부분 unique 인덱스로 Space당 하나만 허용한다. 재발급 순서는 트랜잭션에서 처리한다.
+
+초대 링크는 자동 만료하지 않는다. 발급 시 토큰 해시와 인증된 방식으로 암호화한 토큰을 함께 저장하고, 재복사는 Owner 권한을 확인한 뒤 암호문을 복호화해 같은 링크를 돌려준다. 참여 요청은 토큰 해시로 활성 초대를 찾는다. 재발급은 이전 초대 폐기와 새 초대 생성을 한 트랜잭션에서 처리한다. 암호화 키는 DB와 분리된 서버 비밀값으로 관리하고, 토큰 평문을 로그·분석 이벤트·OAuth callback URL에 남기지 않는다. 이 저장 방식은 초대 구현 시 Prisma schema와 migration에 반영할 예정이며, 현재 DB에는 해시 필드만 있다. 결정 배경은 [`../adr/0003-invitation-link-lifecycle.md`](../adr/0003-invitation-link-lifecycle.md)를 따른다.
 
 직접 등록 Place는 `providerPlaceId` 없이 장소명과 좌표 및 등록자를 보존한다. 원본 Space는 soft delete 뒤에도 남는 SpacePlace 관계로 확인하며, Private Alpha에서는 다른 Space의 검색 후보로 자동 재사용하지 않는다.
 
@@ -306,12 +312,12 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 - `Account(providerId, accountId)`가 Kakao identity와 내부 User를 연결하므로 별도 사용자 동기화 테이블을 만들지 않는다.
 - P0는 PostgreSQL 세션을 사용하고 Redis와 cookie cache는 도입하지 않는다.
 - Provider token은 암호화하고 implicit account linking은 비활성화한다.
-- `User.disabledAt`, Session, SpaceMembership과 객체 권한은 모든 Private 요청에서 서버가 확인한다.
+- Private 읽기·쓰기는 Session, `User.disabledAt`, 활성 SpaceMembership을 서버에서 확인하고, 작성자·Owner 등 추가 권한은 행위별로 검사한다. 예외적으로 초대 진입에서는 활성 초대 토큰을 서버에서 검증한 뒤 비멤버에게 수락 전 공간 이름만 표시한다. 무효·폐기된 토큰에는 이름을 표시하지 않고, 콘텐츠·멤버 목록은 Membership 없이 제공하지 않는다.
 - Cookie의 CSRF, trusted origin, Secure, HttpOnly와 SameSite 정책을 E2E로 확인한다.
 - 모든 입력은 서버에서 schema validation한다.
 - ID만 받아 update/delete하지 않고 Space 경계와 소유권을 함께 조건으로 건다.
 
-세부 결정과 Kakao 설정 순서는 [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)를 따른다. Kakao 키·활성화는 인증 구현 첫 작업에서 실제 계정 2개로 검증한다.
+세부 결정과 Kakao 설정 배경은 [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)를 따른다. 로컬 Kakao OAuth E2E는 완료했고, 별도 계정을 통한 가입·초대·권한 교차 검증은 Alpha 배포 전 남아 있다.
 
 ## 9. PostgreSQL·Prisma·Vercel
 
@@ -376,11 +382,11 @@ KAKAO_CLIENT_SECRET=
 
 ### MSW 도입 기준
 
-현재 Kakao 검색 자체를 MSW로 감싸지 않는다. 실제 SDK와 Mock fallback이 이미 분리되어 있다. 아래 시점에 MSW를 도입한다.
+제품에는 Kakao 검색과 MSW가 아직 없다. 프로토타입에는 실제 SDK와 Mock fallback이 분리돼 있다. 기존 Better Auth route의 존재만으로 MSW를 도입하지 않는다. 제품 UI에서 자체 서버 DTO의 성공·지연·오류를 반복 재현해야 할 때 도입을 검토한다.
 
-- Route Handler 또는 서버 API 계약이 생긴다.
-- UI에서 성공·지연·오류·권한 상태를 반복 재현해야 한다.
-- Storybook 또는 독립 컴포넌트 테스트가 필요해진다.
+- 자체 Route Handler 또는 서버 API의 DTO 계약이 생긴다.
+- UI 테스트에서 성공·지연·오류·권한 상태를 반복 재현해야 한다.
+- 필요하다면 Storybook 또는 독립 컴포넌트 테스트에서도 같은 handler를 재사용한다.
 
 MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모델을 만들지 않는다.
 
@@ -407,8 +413,8 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 6. Place·SpacePlace·Recommendation 데이터 연결
 7. Post·Comment와 작성자 권한·revision
 8. 장소 제거·실행 취소·복구 동시성 테스트
-8. E2E·관측·Vercel Preview
-9. 지인 Private Alpha 배포
+9. E2E·관측·Vercel Preview
+10. 지인 Private Alpha 배포
 
 ## 12. 구현 전 열린 결정
 
