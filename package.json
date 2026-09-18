@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit",
     "fsd": "steiger ./src",
     "test": "node --test --experimental-strip-types server/modules/space/*.test.mjs",
-    "verify": "pnpm lint && pnpm check-types && pnpm fsd && pnpm build",
+    "verify": "pnpm lint && pnpm check-types && pnpm fsd && pnpm test && pnpm build",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
