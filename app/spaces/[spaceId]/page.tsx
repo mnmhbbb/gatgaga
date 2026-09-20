@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { SpaceCreatedToast } from "@/features/space";
+import { InvitationManager } from "@/features/invitation";
+import { SpaceSuccessToast } from "@/features/space";
 import { CurrentUserError } from "@server/modules/auth";
+import { getOwnerInvitation } from "@server/modules/invitation";
 import { getCurrentUserSpace } from "@server/modules/space";
 
 export default async function SpacePage({ params, searchParams }: PageProps<"/spaces/[spaceId]">) {
@@ -21,6 +23,18 @@ export default async function SpacePage({ params, searchParams }: PageProps<"/sp
 
   if (!space) {
     notFound();
+  }
+
+  let ownerInvitation = null;
+  let invitationError: string | undefined;
+
+  if (space.role === "OWNER") {
+    ownerInvitation = await getOwnerInvitation(space.id);
+
+    if (ownerInvitation?.invitePath === null) {
+      invitationError =
+        "기존 링크는 계속 사용할 수 있지만 다시 복사할 수 없어요. 필요하면 새 링크를 발급해 주세요.";
+    }
   }
 
   return (
@@ -71,16 +85,20 @@ export default async function SpacePage({ params, searchParams }: PageProps<"/sp
         >
           첫 장소 추가
         </button>
-        <button
-          type="button"
-          disabled
-          className="mt-3 min-h-11 w-full rounded-2xl border border-brand-border px-4 py-3 text-sm font-bold text-brand-strong opacity-60"
-        >
-          친구 초대
-        </button>
       </section>
 
-      <SpaceCreatedToast visible={query.created === "1"} />
+      {space.role === "OWNER" ? (
+        <InvitationManager
+          initialError={invitationError}
+          initialInvitation={ownerInvitation}
+          spaceId={space.id}
+        />
+      ) : null}
+
+      <SpaceSuccessToast
+        message={query.joined === "1" ? "공간에 참여했어요." : "공간을 만들었어요."}
+        visible={query.created === "1" || query.joined === "1"}
+      />
     </main>
   );
 }

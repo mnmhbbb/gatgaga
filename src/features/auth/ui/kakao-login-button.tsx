@@ -5,10 +5,18 @@ import { useState } from "react";
 import { authClient } from "../api/auth-client";
 
 interface KakaoLoginButtonProps {
+  callbackURL?: string;
+  errorCallbackURL?: string;
   initialErrorMessage?: string;
+  label?: string;
 }
 
-export function KakaoLoginButton({ initialErrorMessage }: KakaoLoginButtonProps) {
+export function KakaoLoginButton({
+  callbackURL = "/",
+  errorCallbackURL = "/?authError=kakao",
+  initialErrorMessage,
+  label = "카카오로 시작하기",
+}: KakaoLoginButtonProps) {
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
     initialErrorMessage ?? null,
@@ -21,8 +29,8 @@ export function KakaoLoginButton({ initialErrorMessage }: KakaoLoginButtonProps)
     try {
       const { error } = await authClient.signIn.social({
         provider: "kakao",
-        callbackURL: "/",
-        errorCallbackURL: "/?authError=kakao",
+        callbackURL,
+        errorCallbackURL,
       });
 
       if (!error) {
@@ -45,7 +53,7 @@ export function KakaoLoginButton({ initialErrorMessage }: KakaoLoginButtonProps)
         disabled={isPending}
         onClick={handleSignIn}
       >
-        {isPending ? "카카오로 이동 중..." : "카카오로 시작하기"}
+        {isPending ? "카카오로 이동 중..." : label}
       </button>
       {errorMessage ? (
         <p className="mt-3 text-sm leading-6 text-red-700" role="alert">

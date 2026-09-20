@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-export function SpaceCreatedToast({ visible }: { visible: boolean }) {
+export function SpaceSuccessToast({
+  message,
+  visible,
+}: {
+  message: string;
+  visible: boolean;
+}) {
   const [isVisible, setIsVisible] = useState(visible);
 
   useEffect(() => {
@@ -24,7 +30,7 @@ export function SpaceCreatedToast({ visible }: { visible: boolean }) {
       className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 mx-auto max-w-[398px] rounded-2xl bg-ink px-4 py-3 text-center text-sm font-bold text-white shadow-lg"
       role="status"
     >
-      공간을 만들었어요.
+      {message}
     </div>
   );
 }

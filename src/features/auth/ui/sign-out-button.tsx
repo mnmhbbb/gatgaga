@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { authClient } from "../api/auth-client";
 
-export function SignOutButton() {
+export function SignOutButton({ redirectTo = "/" }: { redirectTo?: "/" | "/invite/continue" }) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export function SignOutButton() {
         return;
       }
 
-      router.replace("/");
+      router.replace(redirectTo);
       router.refresh();
     } catch {
       setErrorMessage("로그아웃하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.");
