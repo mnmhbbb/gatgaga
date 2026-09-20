@@ -1,6 +1,6 @@
 # 같가가 ERD v0.1
 
-- 최종 업데이트: 2026-09-19
+- 최종 업데이트: 2026-09-20
 - 상태: **구현 기준선 — 첫 Prisma migration 적용·검증 완료**
 - 인증 결정: [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)
 - 제품 기준: [`../product/prd-v1.0.md`](../product/prd-v1.0.md)
@@ -220,13 +220,13 @@ P0에는 별도 `ProductUser`나 `UserProfile`을 만들지 않는다. `disabled
 | --- | --- | --- |
 | `Space` | 지속되는 장소 협업 단위 | name 1~40자, P0 생성은 `PRIVATE`만 허용 |
 | `SpaceMembership` | User와 Space의 역할·활성 관계 | `(spaceId, userId)` unique, `revokedAt IS NULL`이면 활성 |
-| `SpaceInvitation` | 공유 가능한 초대 권한 | 현재 DB는 SHA-256 hash만 저장하며 자동 만료 없음. 초대 구현 시 같은 링크 재복사용 인증된 암호문 필드를 migration으로 추가 |
+| `SpaceInvitation` | 공유 가능한 초대 권한 | SHA-256 hash 조회, 서버 HMAC 토큰 재생성, 자동 만료 없음 |
 
 - `Space.visibility`는 `PRIVATE | PUBLIC`이다. P0 API는 `PRIVATE`만 입력받고 P1에서 `PUBLIC`을 연다.
 - `Space.createdByUserId`는 감사 정보이고 현재 Owner는 Membership의 `role`로 판단한다. 둘은 생성자와 현재 권한이라는 서로 다른 사실이다.
 - 활성 Owner는 Space당 최대 1명이다. 최소 1명 유지는 생성·이전 transaction으로 보장한다.
 - 활성 Invitation도 Space당 최대 1개다. 재발급 transaction은 기존 행을 폐기하고 새 행을 만든다.
-- Owner의 활성 링크 재복사는 기존 행과 토큰을 그대로 사용한다. 암호문 필드는 복사용이며, 참여 시에는 해시로 활성 초대를 조회한다. 암호화 키는 DB와 분리된 서버 비밀값으로 관리한다. 위 다이어그램은 현재 적용된 schema이므로 예정 필드는 아직 표시하지 않았다.
+- Owner의 활성 링크 재복사는 invitation ID·space ID와 서버 master key로 같은 토큰을 재생성해 저장 해시와 비교한다. 참여 시에는 해시로 활성 초대를 조회한다.
 
 ### 장소와 콘텐츠
 
@@ -289,7 +289,7 @@ Prisma schema만으로 표현할 수 없는 부분 인덱스와 CHECK는 생성�
 
 - `createSpace`: Space와 Owner Membership을 한 transaction에서 생성한다.
 - `rotateInvitation`: 활성 초대를 폐기하고 새 hash를 생성한다. 부분 unique가 동시 재발급 중복을 막는다.
-- `acceptInvitation`: 활성 초대와 User를 확인하고 Membership을 upsert한다. unique 충돌은 이미 참여한 멱등 성공으로 처리한다.
+- `acceptInvitation`: Space 행 잠금 뒤 활성 초대와 User를 다시 확인하고 Membership을 멱등 생성한다. 활성 Membership은 역할을 유지하며, 취소된 Membership은 과거 역할과 무관하게 `MEMBER`로 재활성화한다.
 
 ### 장소와 기여
 
@@ -327,8 +327,8 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 2. **완료** — `auth generate` 결과와 이 ERD를 비교해 하나의 `schema.prisma`로 합친다.
 3. **완료** — 첫 migration에 부분 인덱스·CHECK·FK 정책을 보강하고 실제 PostgreSQL smoke test를 통과한다.
 4. **완료** — 로컬 `Kakao 로그인 → createSpace` 세로 기능과 transaction rollback을 검증했다. 별도 계정 교차 검증은 Alpha 전 남아 있다.
-5. **다음** — `초대 발급 → 로그인 복귀 → acceptInvitation`을 반복·동시 수락 integration test와 함께 구현한다.
-6. 장소 추가·추천·글·댓글·제거의 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
+5. **완료** — 기존 초대 해시 schema에서 Owner 발급·복사·폐기·재발급, token 없는 OAuth 복귀와 멱등 수락을 구현하고 PostgreSQL smoke test를 통과했다.
+6. **다음** — 장소 추가·추천·글·댓글·제거의 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
 
 최소 검증 시나리오:
 

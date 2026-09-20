@@ -77,8 +77,9 @@ auth 모듈(Better Auth 소유)
 ### 초대 후 로그인 복귀
 
 ```text
-/invite/[rawToken]
-→ 서버에서 token hash 검증
+/invite#rawToken
+→ 브라우저가 fragment를 즉시 주소에서 제거
+→ Server Action에서 token hash 검증
 → invitationId를 담은 10분짜리 서명된 HttpOnly intent cookie 설정
 → 원본 token이 없는 /invite/continue로 이동
 → 유효한 초대의 공간 이름만 표시
@@ -89,7 +90,7 @@ auth 모듈(Better Auth 소유)
 → Membership 멱등 생성
 ```
 
-- 원본 초대 토큰을 OAuth callback URL, 로그, 분석 이벤트에 남기지 않는다. DB에는 Owner의 동일 링크 재복사를 위해 암호문을 저장한다. 저장 방식은 [`0003-invitation-link-lifecycle.md`](0003-invitation-link-lifecycle.md)에서 결정한다.
+- 원본 초대 토큰은 URL fragment로만 전달하고 첫 화면에서 즉시 제거한다. fragment는 서버 요청·Referer에 포함되지 않으며 OAuth callback URL, 로그, 분석 이벤트에도 남기지 않는다. Owner의 동일 링크 재복사는 서버 키로 토큰을 재생성하며 DB에는 조회용 해시만 저장한다. 저장 방식은 [`0003-invitation-link-lifecycle.md`](0003-invitation-link-lifecycle.md)에서 결정한다.
 - 초대 화면은 현재 활성 초대인지 서버에서 재확인한 뒤 공간 이름만 표시한다. 무효·폐기된 초대에는 이름을 표시하지 않으며, 콘텐츠·멤버 목록 접근은 Membership으로만 허용한다.
 - callback URL은 내부 상대 경로 allowlist만 허용해 open redirect를 막는다.
 - 로그인 성공만으로 초대를 자동 수락하지 않으며 GET 요청으로 Membership을 만들지 않는다.

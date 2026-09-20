@@ -1,7 +1,7 @@
 # 같가가 기술 설계 v1.0
 
-- 최종 업데이트: 2026-09-19
-- 상태: **인증·Space 생성 세로 기능 완료 — 초대 복귀·수락 다음 작업**
+- 최종 업데이트: 2026-09-20
+- 상태: **인증·Space 생성·초대 참여 세로 기능 완료 — 장소 저장 다음 작업**
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
@@ -227,7 +227,7 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 | Verification | Better Auth가 사용하는 단기 검증 데이터 |
 | Space | 이름, visibility와 생성 감사 정보 |
 | SpaceMembership | User-Space 관계, Owner/Member, 상태 |
-| SpaceInvitation | 조회용 토큰 해시, Owner 재복사용 암호문, 활성·폐기 상태, 생성자. 암호문 필드는 초대 구현 시 migration으로 추가 |
+| SpaceInvitation | 조회용 토큰 해시, 활성·폐기 상태, 생성자 |
 | Place | Provider 또는 직접 등록 장소의 사실 정보 |
 | SpacePlace | Space에 저장된 Place와 제거 상태 |
 | PlaceRecommendation | 멤버의 장소 추천 사실과 시각 |
@@ -243,7 +243,7 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 - Kakao Place: `(sourceType, providerPlaceId)` unique
 - 활성 초대: 부분 unique 인덱스로 Space당 하나만 허용한다. 재발급 순서는 트랜잭션에서 처리한다.
 
-초대 링크는 자동 만료하지 않는다. 발급 시 토큰 해시와 인증된 방식으로 암호화한 토큰을 함께 저장하고, 재복사는 Owner 권한을 확인한 뒤 암호문을 복호화해 같은 링크를 돌려준다. 참여 요청은 토큰 해시로 활성 초대를 찾는다. 재발급은 이전 초대 폐기와 새 초대 생성을 한 트랜잭션에서 처리한다. 암호화 키는 DB와 분리된 서버 비밀값으로 관리하고, 토큰 평문을 로그·분석 이벤트·OAuth callback URL에 남기지 않는다. 이 저장 방식은 초대 구현 시 Prisma schema와 migration에 반영할 예정이며, 현재 DB에는 해시 필드만 있다. 결정 배경은 [`../adr/0003-invitation-link-lifecycle.md`](../adr/0003-invitation-link-lifecycle.md)를 따른다.
+초대 링크는 자동 만료하지 않는다. 토큰은 invitation ID·space ID와 서버 전용 HMAC 키로 재생성하며 DB에는 조회용 SHA-256 해시만 저장한다. Owner 재복사는 재생성 토큰의 해시가 저장 해시와 일치할 때만 같은 링크를 반환한다. 재발급은 Space 행을 잠그고 클라이언트가 본 invitation ID가 여전히 활성인지 확인한 뒤 이전 초대 폐기와 새 초대 생성을 한 트랜잭션에서 처리한다. 링크 토큰 키와 intent HMAC 키는 DB와 분리한 `SPACE_INVITATION_MASTER_KEY`에서 HKDF로 용도별 파생한다. 토큰은 `/invite#token` fragment로 전달하고 즉시 10분짜리 HttpOnly intent cookie로 교환해 일반 요청 URL·OAuth callback URL·로그·분석 이벤트에 남기지 않는다. 결정 배경은 [`../adr/0003-invitation-link-lifecycle.md`](../adr/0003-invitation-link-lifecycle.md)를 따른다.
 
 직접 등록 Place는 `providerPlaceId` 없이 장소명과 좌표 및 등록자를 보존한다. 원본 Space는 soft delete 뒤에도 남는 SpacePlace 관계로 확인하며, Private Alpha에서는 다른 Space의 검색 후보로 자동 재사용하지 않는다.
 
@@ -292,7 +292,10 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 | 유스케이스 | 입력 | 핵심 보장 |
 | --- | --- | --- |
 | `createSpace` | name | Space와 Owner Membership 원자 생성 |
-| `acceptInvitation` | token | 해시 비교, 폐기 확인, Membership 멱등 생성 |
+| `getOrCreateInvitationLink` | spaceId | Owner 확인, 활성 링크 지연 발급 또는 동일 링크 재복사 |
+| `revokeInvitation` | spaceId, expectedInvitationId | Owner 확인, 오래된 화면의 새 링크 폐기 방지 |
+| `rotateInvitation` | spaceId, expectedInvitationId | 기존 링크 폐기와 새 링크 발급 원자 처리 |
+| `acceptInvitation` | 서명된 intent의 invitationId | 활성·폐기 재확인, Membership 멱등 생성 |
 | `addPlaceToSpace` | spaceId, PlaceCandidate | Provider/Space 중복 방지, 최초 추천 생성 |
 | `recommendPlace` | spacePlaceId | 사용자별 추천 하나 |
 | `createPlacePost` | spacePlaceId, body | 활성 Member, 1,000자 제한 |
@@ -366,6 +369,7 @@ BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=
 KAKAO_CLIENT_ID=
 KAKAO_CLIENT_SECRET=
+SPACE_INVITATION_MASTER_KEY=
 ```
 
 실제 값은 커밋하지 않는다. Vercel 환경 변수에는 Preview와 Production 범위를 분리한다.
@@ -409,8 +413,8 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 2. **완료** — Better Auth 1.7.3 core schema와 제품 ERD 병합, 첫 migration·제약 smoke test
 3. **완료** — Kakao Login 설정·동의 항목과 Better Auth 세션 연결
 4. **완료** — Space·Owner Membership 원자 생성과 Private Space 접근 검사
-5. **다음** — 초대 링크 발급·로그인 복귀·Membership 멱등 수락
-6. Place·SpacePlace·Recommendation 데이터 연결
+5. **완료** — 초대 링크 지연 발급·동일 링크 재복사·폐기·재발급, fragment→intent 로그인 복귀, Membership 멱등 수락
+6. **다음** — Place·SpacePlace·Recommendation 데이터 연결
 7. Post·Comment와 작성자 권한·revision
 8. 장소 제거·실행 취소·복구 동시성 테스트
 9. E2E·관측·Vercel Preview

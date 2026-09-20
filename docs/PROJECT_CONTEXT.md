@@ -1,8 +1,8 @@
 # 같가가 프로젝트 핸드오프
 
-- 최종 업데이트: 2026-09-19
-- 현재 단계: Better Auth·Kakao OAuth 인증과 Space·Owner Membership 원자 생성 완료
-- 다음 한 단계: 초대 링크 발급·로그인 복귀·멱등 수락 세로 기능 구현
+- 최종 업데이트: 2026-09-20
+- 현재 단계: 초대 링크 발급·재복사·폐기·재발급과 로그인 복귀·멱등 수락 완료
+- 다음 한 단계: Place·SpacePlace·최초 Recommendation 원자 저장 세로 기능 구현
 - 저장소: 이 문서가 들어 있는 `gatgaga` 제품 저장소
 
 ## 한 줄 정의
@@ -29,7 +29,7 @@
 
 ## 실제 제품 구현과 검증
 
-- 현재 제품에는 로그인·내 공간·공간 생성·활성 멤버의 Private Space 접근까지 연결됐다. 초대·장소·지도·추천·글·댓글은 아직 제품에 구현되지 않았다.
+- 현재 제품에는 로그인·내 공간·공간 생성·Private Space 접근과 초대 참여까지 연결됐다. 장소·지도·추천·글·댓글은 아직 제품에 구현되지 않았다.
 - Prisma 7.10.0과 Better Auth 1.7.3을 정확히 고정했다. 로컬 DB는 Docker PostgreSQL 18.4를 사용한다.
 - Better Auth core와 제품 ERD를 합친 첫 migration, 부분 unique·CHECK 제약과 rollback smoke test가 통과했다.
 - Better Auth Runtime은 Prisma adapter와 Kakao provider를 사용하며 `/api/auth/[...all]`에 연결했다.
@@ -39,6 +39,12 @@
 - 서버 세션과 DB User를 대조하는 `requireCurrentUser` guard를 구현했다.
 - 공간 이름을 trim 후 1~40자로 검증하고 Space와 OWNER Membership을 transaction으로 생성한다.
 - 내 공간 목록, 공간 생성 화면과 Private Space 멤버 접근 검사를 연결했다.
+- Owner가 요청할 때 활성 초대를 지연 발급하고, 같은 링크 재복사·폐기·재발급을 Space 행 잠금과 expected invitation ID로 보호한다.
+- 초대 토큰은 `/invite#token` fragment로 전달해 주소에서 즉시 제거하고, 10분짜리 서명된 HttpOnly intent cookie로 로그인 전후 흐름을 잇는다.
+- 활성 초대만 공간 이름을 보여주며, 기존 Member·Owner는 쓰기 없이 공간으로 이동한다. 취소된 Membership은 과거 Owner 권한을 복구하지 않고 Member로 멱등 재활성화한다.
+- 초대 토큰은 invitation ID·space ID와 서버 master key로 재생성하고 DB에는 기존 SHA-256 hash만 저장한다. 링크 토큰과 intent 서명 키는 HKDF로 분리한다.
+- Prisma schema 변경 없이 전체 제약, 공간 생성, 초대 반복 수락·재발급 PostgreSQL smoke test가 통과했다.
+- `lint`, `check-types`, `fsd`, 단위 테스트와 Next.js production Webpack build가 통과했다.
 - 사용성 프로토타입은 별도 형제 폴더에 보존하며 제품 구현 완료의 근거로 사용하지 않는다.
 
 ## 참고 프로토타입
@@ -58,8 +64,8 @@
 
 ## 다음 한 단계와 열린 결정
 
-1. **다음 구현** — 현재 DB에는 초대 토큰 해시만 있다. 재복사용 암호문 필드와 migration을 추가하고, Owner의 발급·동일 링크 재복사·폐기·재발급, 로그인 복귀·멱등 수락을 연결한다. 유효한 링크에는 참여 전 공간 이름만 표시하고 무효·폐기 링크에는 이름을 노출하지 않는다.
-2. Alpha 배포 전 별도 실제 계정으로 가입·초대·권한 흐름을 교차 검증한다.
+1. **다음 구현** — Kakao 장소 후보를 `Place`로 upsert하고 `SpacePlace`와 추가자의 최초 `PlaceRecommendation`을 한 transaction에서 저장한다. 같은 공간의 같은 장소는 기존 상세로, 제거된 연결은 자동 복구 대신 `RESTORE_REQUIRED`로 분기한다.
+2. Alpha 배포 전 별도 실제 계정으로 가입·초대·권한 흐름을 교차 검증한다. 초대 master key와 Production cookie 설정도 배포 환경에서 확인한다.
 
 완료한 데이터 기반:
 
@@ -68,6 +74,7 @@
 - `prisma/migrations/`: 첫 migration·Better Auth Account 정합화 migration과 DB 무결성 제약
 - `prisma/tests/constraints-smoke.sql`: 실제 PostgreSQL 제약 회귀 검증
 - `prisma/tests/create-space-transaction-smoke.sql`: Space·Owner 원자 생성과 rollback 검증
+- `prisma/tests/invitation-transaction-smoke.sql`: 반복 수락의 단일 Membership과 초대 재발급 무결성 검증
 
 ## 작업 목적
 
