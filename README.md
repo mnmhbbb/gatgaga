@@ -30,6 +30,7 @@ corepack pnpm verify
 corepack pnpm db:validate
 corepack pnpm db:test-constraints
 corepack pnpm db:test-space-transaction
+corepack pnpm db:test-invitation
 ```
 
 `verify`는 lint·타입·FSD·단위 테스트·빌드를 실행합니다. DB smoke test는 실행 중인 로컬 PostgreSQL에서 별도로 실행합니다.
