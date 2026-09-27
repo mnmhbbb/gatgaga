@@ -329,7 +329,8 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 4. **완료** — 로컬 `Kakao 로그인 → createSpace` 세로 기능과 transaction rollback을 검증했다. 별도 계정 교차 검증은 Alpha 전 남아 있다.
 5. **완료** — 기존 초대 해시 schema에서 Owner 발급·복사·폐기·재발급, token 없는 OAuth 복귀와 멱등 수락을 구현하고 PostgreSQL smoke test를 통과했다.
 6. **완료** — Kakao 장소 추가 transaction과 중복·제거·rollback PostgreSQL smoke test를 연결했다. schema·migration은 변경하지 않았다.
-7. **다음** — 추가 추천·글·댓글·제거 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
+7. **완료** — 추가 추천을 사용자별로 멱등 저장하고 새 추천과 `impactVersion` 증가를 같은 transaction에서 검증했다.
+8. **다음** — 글·댓글·제거 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
 
 최소 검증 시나리오:
 

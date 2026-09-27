@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { PlaceMap } from "@/features/place";
+import { PlaceMap, PlaceRecommendationButton } from "@/features/place";
 import { CurrentUserError } from "@server/modules/auth";
 import { getSpacePlace } from "@server/modules/place";
 
@@ -28,6 +28,12 @@ export default async function PlaceDetailPage({ params, searchParams }: PageProp
     {item.place.externalUrl ? <a href={item.place.externalUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-brand">카카오맵에서 보기</a> : null}
     <div className="mt-8 rounded-2xl border border-line p-5">
       <h2 className="text-sm font-bold text-ink">추천 {item._count.recommendations}명</h2>
+      <p className="mt-2 text-sm text-muted">{item.recommendations.map(({ user }) => user.name).join(" · ")}</p>
+      <PlaceRecommendationButton
+        spaceId={spaceId}
+        spacePlaceId={spacePlaceId}
+        recommendedByCurrentUser={item.recommendedByCurrentUser}
+      />
     </div>
   </main>;
 }

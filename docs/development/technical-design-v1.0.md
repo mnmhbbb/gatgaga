@@ -1,7 +1,7 @@
 # 같가가 기술 설계 v1.0
 
 - 최종 업데이트: 2026-09-27
-- 상태: **Kakao 장소 검색·확인·원자 저장 세로 기능 완료 — 추천 추가와 직접 등록 다음 작업**
+- 상태: **Kakao 장소 저장·멤버의 추가 추천 완료 — 직접 등록 다음 작업**
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
@@ -299,7 +299,7 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 | `rotateInvitation` | spaceId, expectedInvitationId | 기존 링크 폐기와 새 링크 발급 원자 처리 |
 | `acceptInvitation` | 서명된 intent의 invitationId | 활성·폐기 재확인, Membership 멱등 생성 |
 | `addPlaceToSpace` | spaceId, PlaceCandidate | Provider/Space 중복 방지, 최초 추천 생성 |
-| `recommendPlace` | spacePlaceId | 사용자별 추천 하나 |
+| `recommendPlace` | spaceId, spacePlaceId | 활성 Member·장소 확인, 사용자별 추천 하나, 새 추천 시 impactVersion 갱신 |
 | `createPlacePost` | spacePlaceId, body | 활성 Member, 1,000자 제한 |
 | `updatePost` | postId, body | 작성자 권한 |
 | `deletePost` | postId | 작성자 권한, soft delete |
@@ -417,11 +417,12 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 4. **완료** — Space·Owner Membership 원자 생성과 Private Space 접근 검사
 5. **완료** — 초대 링크 지연 발급·동일 링크 재복사·폐기·재발급, fragment→intent 로그인 복귀, Membership 멱등 수락
 6. **완료** — Kakao 후보의 Place upsert와 SpacePlace·최초 Recommendation 원자 저장, 중복·제거 분기 및 PostgreSQL smoke test
-7. **다음** — 멤버의 추가 추천과 직접 등록, 목록·지도 전환 및 제거·복구
-8. Post·Comment와 작성자 권한·revision
-9. 장소 제거·실행 취소·복구 동시성 테스트
-10. E2E·관측·Vercel Preview
-10. 지인 Private Alpha 배포
+7. **완료** — 멤버의 추가 추천과 사용자별 중복 방지, impactVersion 갱신
+8. **다음** — Kakao 검색 결과가 없을 때 직접 등록
+9. 목록·지도 전환과 장소 글·댓글 및 작성자 권한·revision
+10. 장소 제거·실행 취소·복구 동시성 테스트
+11. E2E·관측·Vercel Preview
+12. 지인 Private Alpha 배포
 
 ## 12. 구현 전 열린 결정
 
