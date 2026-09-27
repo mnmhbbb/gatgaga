@@ -1,7 +1,7 @@
 # 같가가 기술 설계 v1.0
 
-- 최종 업데이트: 2026-09-20
-- 상태: **인증·Space 생성·초대 참여 세로 기능 완료 — 장소 저장 다음 작업**
+- 최종 업데이트: 2026-09-27
+- 상태: **Kakao 장소 검색·확인·원자 저장 세로 기능 완료 — 추천 추가와 직접 등록 다음 작업**
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
@@ -34,7 +34,7 @@
 | ORM | Prisma 7.10.0 + PostgreSQL driver adapter | 구현 |
 | DB | PostgreSQL 18.4(local), 운영 Neon | local 구현 |
 | 배포 | Vercel | 확정 |
-| 지도·장소 검색 | Kakao Maps JavaScript SDK | 확정 |
+| 지도·장소 검색 | Kakao Maps JavaScript SDK | 검색·장소 위치 지도 구현, 공간 지도 전환 미구현 |
 | 인증 | Better Auth 1.7.3 + Kakao OAuth | E2E 완료 |
 | 이미지 | S3 private bucket + Presigned URL | P1 |
 | 테스트 Mock | 필요 시 MSW | 도입 시점 미정 |
@@ -121,7 +121,7 @@ prisma/
 
 - 프로토타입은 JavaScript 키가 있으면 실제 Kakao Places와 Map을 사용한다.
 - 프로토타입은 키가 없으면 UI 개발을 위한 Mock 검색·지도 미리보기로 전환한다.
-- 프로토타입의 환경 변수는 `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`를 사용한다. 제품에 검색·지도를 이식할 때 설정과 fallback 정책을 다시 확인한다.
+- 제품과 프로토타입은 `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`를 사용한다. 제품은 키나 SDK 로드가 실패하면 오류를 표시하고 Mock 장소를 저장하지 않는다.
 - Kakao Developers에는 로컬과 배포 도메인을 JavaScript SDK 도메인으로 등록한다.
 - JavaScript 키는 브라우저에 노출되는 식별자이므로 비밀값으로 취급하지 않지만, 허용 도메인과 쿼터를 제한한다.
 - 향후 REST API Admin/Secret 키는 서버 환경 변수에만 보관한다.
@@ -173,7 +173,7 @@ NAVER도 동적 지도와 Marker를 구현할 수 있고 작은 서비스는 무
 
 Private Alpha에는 구현하지 않는다.
 
-- 프로토타입의 `keywordSearch(query)`에는 위치 좌표를 전달하지 않는다. 제품에는 검색이 아직 없다.
+- 제품과 프로토타입의 `keywordSearch(query)`에는 위치 좌표를 전달하지 않는다.
 - 결과 주소는 Kakao가 각 장소 정보로 반환한 값이며 사용자 현재 위치를 사용한 것이 아니다.
 - 사용자는 `지역 + 장소명`으로 검색 범위를 좁힌다.
 - Browser Geolocation 권한, 정확도, 거부·시간 초과 처리는 사용자 요구가 확인될 때 별도 기술 스파이크로 다룬다.
@@ -266,6 +266,8 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 3. 추가자의 PlaceRecommendation을 upsert한다.
 4. 이미 활성 상태면 기존 장소 ID를 멱등 성공으로 반환한다.
 5. soft delete 상태면 자동 복구하지 않고 `RESTORE_REQUIRED`를 반환한다.
+
+제품 구현은 Server Action에서 후보 필드를 받아 서버에서 세션·비활성 User·활성 Membership을 검증한 뒤 위 쓰기를 수행한다. PostgreSQL의 기존 Kakao 부분 unique 인덱스로 `Place`를 삽입하거나 기존 행을 조회하며, 중복 후보 값으로 기존 장소 사실을 덮어쓰지 않는다. `(spaceId, placeId)` unique에 충돌하는 `SpacePlace`도 새로 만들지 않는다. 새 연결일 때만 최초 추천을 삽입한다. 활성 연결은 `EXISTING`과 기존 상세 ID를 반환하며 제거된 연결은 `RESTORE_REQUIRED`를 반환한다. 같은 Space의 동시 추가는 Space 행 잠금으로 순서를 정한다. Prisma schema·migration 변경은 없다.
 
 ### 장소 제거
 
@@ -414,10 +416,11 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 3. **완료** — Kakao Login 설정·동의 항목과 Better Auth 세션 연결
 4. **완료** — Space·Owner Membership 원자 생성과 Private Space 접근 검사
 5. **완료** — 초대 링크 지연 발급·동일 링크 재복사·폐기·재발급, fragment→intent 로그인 복귀, Membership 멱등 수락
-6. **다음** — Place·SpacePlace·Recommendation 데이터 연결
-7. Post·Comment와 작성자 권한·revision
-8. 장소 제거·실행 취소·복구 동시성 테스트
-9. E2E·관측·Vercel Preview
+6. **완료** — Kakao 후보의 Place upsert와 SpacePlace·최초 Recommendation 원자 저장, 중복·제거 분기 및 PostgreSQL smoke test
+7. **다음** — 멤버의 추가 추천과 직접 등록, 목록·지도 전환 및 제거·복구
+8. Post·Comment와 작성자 권한·revision
+9. 장소 제거·실행 취소·복구 동시성 테스트
+10. E2E·관측·Vercel Preview
 10. 지인 Private Alpha 배포
 
 ## 12. 구현 전 열린 결정

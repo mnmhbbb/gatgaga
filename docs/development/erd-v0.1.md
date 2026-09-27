@@ -293,7 +293,7 @@ Prisma schema만으로 표현할 수 없는 부분 인덱스와 CHECK는 생성�
 
 ### 장소와 기여
 
-- `addPlaceToSpace`: Place upsert → SpacePlace upsert → 최초 Recommendation insert를 한 transaction에서 처리한다.
+- `addPlaceToSpace`: 기존 Kakao 부분 unique 인덱스로 Place 삽입 또는 기존 행 조회 → SpacePlace 충돌 시 기존 행 조회 → 새 연결일 때만 최초 Recommendation insert를 한 transaction에서 처리한다. 중복 후보는 기존 Place의 장소 사실을 변경하지 않으며 같은 Space의 추가는 Space 행 잠금으로 직렬화한다.
 - 삭제된 SpacePlace가 unique에 걸리면 자동 복구하지 않고 `RESTORE_REQUIRED`를 반환한다.
 - 추천·Post·Comment의 생성·수정·삭제 transaction은 먼저 `deletedAt IS NULL`인 SpacePlace의 `impactVersion`을 원자적으로 1 증가시킨다. 갱신된 행이 없으면 기여를 만들지 않는다.
 - 장소 제거 확인 응답은 최신 기여 수와 `impactVersion`을 함께 반환한다.
@@ -328,7 +328,8 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 3. **완료** — 첫 migration에 부분 인덱스·CHECK·FK 정책을 보강하고 실제 PostgreSQL smoke test를 통과한다.
 4. **완료** — 로컬 `Kakao 로그인 → createSpace` 세로 기능과 transaction rollback을 검증했다. 별도 계정 교차 검증은 Alpha 전 남아 있다.
 5. **완료** — 기존 초대 해시 schema에서 Owner 발급·복사·폐기·재발급, token 없는 OAuth 복귀와 멱등 수락을 구현하고 PostgreSQL smoke test를 통과했다.
-6. **다음** — 장소 추가·추천·글·댓글·제거의 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
+6. **완료** — Kakao 장소 추가 transaction과 중복·제거·rollback PostgreSQL smoke test를 연결했다. schema·migration은 변경하지 않았다.
+7. **다음** — 추가 추천·글·댓글·제거 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
 
 최소 검증 시나리오:
 

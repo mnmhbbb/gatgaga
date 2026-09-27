@@ -1,0 +1,48 @@
+export type KakaoPlaceCandidate = {
+  providerPlaceId: string;
+  name: string;
+  category: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  externalUrl?: string;
+};
+
+export class PlaceInputError extends Error {
+  constructor() {
+    super("장소 정보를 확인할 수 없어요. 다시 검색해 주세요.");
+    this.name = "PlaceInputError";
+  }
+}
+
+export function validateKakaoPlaceCandidate(input: unknown): KakaoPlaceCandidate {
+  if (!input || typeof input !== "object") throw new PlaceInputError();
+
+  const value = input as Record<string, unknown>;
+  const providerPlaceId = value.providerPlaceId;
+  const name = typeof value.name === "string" ? value.name.trim() : "";
+  const category = typeof value.category === "string" ? value.category.trim() : "";
+  const address = typeof value.address === "string" ? value.address.trim() : "";
+  const latitude = value.latitude;
+  const longitude = value.longitude;
+  const externalUrl = value.externalUrl;
+
+  if (
+    typeof providerPlaceId !== "string" ||
+    !/^\d{1,100}$/.test(providerPlaceId) ||
+    !name || name.length > 200 ||
+    category.length > 200 ||
+    !address || address.length > 500 ||
+    typeof latitude !== "number" || !Number.isFinite(latitude) ||
+    latitude < -90 || latitude > 90 ||
+    typeof longitude !== "number" || !Number.isFinite(longitude) ||
+    longitude < -180 || longitude > 180 ||
+    (externalUrl !== undefined &&
+      (typeof externalUrl !== "string" || externalUrl.length > 2048 ||
+        !/^https?:\/\/place\.map\.kakao\.com\/\d+\/?$/.test(externalUrl)))
+  ) {
+    throw new PlaceInputError();
+  }
+
+  return { providerPlaceId, name, category, address, latitude, longitude, externalUrl: externalUrl as string | undefined };
+}

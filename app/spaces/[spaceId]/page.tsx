@@ -5,6 +5,7 @@ import { InvitationManager } from "@/features/invitation";
 import { SpaceSuccessToast } from "@/features/space";
 import { CurrentUserError } from "@server/modules/auth";
 import { getOwnerInvitation } from "@server/modules/invitation";
+import { getSpacePlaces } from "@server/modules/place";
 import { getCurrentUserSpace } from "@server/modules/space";
 
 export default async function SpacePage({ params, searchParams }: PageProps<"/spaces/[spaceId]">) {
@@ -24,6 +25,8 @@ export default async function SpacePage({ params, searchParams }: PageProps<"/sp
   if (!space) {
     notFound();
   }
+
+  const places = await getSpacePlaces(spaceId);
 
   let ownerInvitation = null;
   let invitationError: string | undefined;
@@ -70,22 +73,31 @@ export default async function SpacePage({ params, searchParams }: PageProps<"/sp
         <span className="px-4 py-3 text-center text-muted">지도</span>
       </div>
 
-      <section className="mt-8 rounded-3xl border border-line bg-canvas px-6 py-12 text-center">
-        <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-xl font-black text-brand-strong">
-          +
-        </span>
-        <h2 className="mt-5 text-lg font-black text-ink">첫 장소를 함께 모아볼까요?</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          가고 싶은 장소를 추가하면 이곳에서 함께 볼 수 있어요.
-        </p>
-        <button
-          type="button"
-          disabled
-          className="mt-7 min-h-12 w-full rounded-2xl bg-brand px-4 py-3 text-sm font-bold text-white opacity-60"
-        >
-          첫 장소 추가
-        </button>
-      </section>
+      {places?.length ? (
+        <section className="mt-8">
+          <h2 className="text-sm font-bold text-ink">장소 {places.length}곳 · 최근 추가순</h2>
+          <ul className="mt-3 divide-y divide-line rounded-2xl border border-line">
+            {places.map((item) => (
+              <li key={item.id}>
+                <Link href={`/spaces/${spaceId}/places/${item.id}`} className="block px-4 py-4">
+                  <strong className="block text-base text-ink">{item.place.name}</strong>
+                  <span className="mt-1 block text-xs text-muted">{item.place.category} · {item.place.address}</span>
+                  <span className="mt-1 block text-xs text-brand">추천 {item._count.recommendations}명</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <section className="mt-8 rounded-3xl border border-line bg-canvas px-6 py-12 text-center">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-xl font-black text-brand-strong">+</span>
+          <h2 className="mt-5 text-lg font-black text-ink">첫 장소를 함께 모아볼까요?</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">가고 싶은 장소를 추가하면 이곳에서 함께 볼 수 있어요.</p>
+          <Link href={`/spaces/${spaceId}/places/new`} className="mt-7 flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand px-4 py-3 text-sm font-bold text-white">첫 장소 추가</Link>
+        </section>
+      )}
+
+      {places?.length ? <Link href={`/spaces/${spaceId}/places/new`} className="mt-8 flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand px-4 py-3 text-sm font-bold text-white">장소 추가</Link> : null}
 
       {space.role === "OWNER" ? (
         <InvitationManager

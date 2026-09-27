@@ -1,8 +1,8 @@
 # 같가가 프로젝트 핸드오프
 
-- 최종 업데이트: 2026-09-20
-- 현재 단계: 초대 링크 발급·재복사·폐기·재발급과 로그인 복귀·멱등 수락 완료
-- 다음 한 단계: Place·SpacePlace·최초 Recommendation 원자 저장 세로 기능 구현
+- 최종 업데이트: 2026-09-27
+- 현재 단계: Kakao 장소 검색·확인·Place·SpacePlace·최초 추천 원자 저장 세로 기능 완료
+- 다음 한 단계: 기존 장소에 대한 멤버의 추가 추천 기능 구현
 - 저장소: 이 문서가 들어 있는 `gatgaga` 제품 저장소
 
 ## 한 줄 정의
@@ -29,7 +29,7 @@
 
 ## 실제 제품 구현과 검증
 
-- 현재 제품에는 로그인·내 공간·공간 생성·Private Space 접근과 초대 참여까지 연결됐다. 장소·지도·추천·글·댓글은 아직 제품에 구현되지 않았다.
+- 현재 제품에는 로그인·내 공간·공간 생성·Private Space 접근·초대 참여와 Kakao 장소 검색·확인·저장·목록·상세가 연결됐다. 장소 상세의 위치 지도와 최초 추천 수를 표시한다. 추가 추천·직접 등록·공간 지도 전환·글·댓글·제거·복구는 아직 구현되지 않았다.
 - Prisma 7.10.0과 Better Auth 1.7.3을 정확히 고정했다. 로컬 DB는 Docker PostgreSQL 18.4를 사용한다.
 - Better Auth core와 제품 ERD를 합친 첫 migration, 부분 unique·CHECK 제약과 rollback smoke test가 통과했다.
 - Better Auth Runtime은 Prisma adapter와 Kakao provider를 사용하며 `/api/auth/[...all]`에 연결했다.
@@ -44,7 +44,9 @@
 - 활성 초대만 공간 이름을 보여주며, 기존 Member·Owner는 쓰기 없이 공간으로 이동한다. 취소된 Membership은 과거 Owner 권한을 복구하지 않고 Member로 멱등 재활성화한다.
 - 초대 토큰은 invitation ID·space ID와 서버 master key로 재생성하고 DB에는 기존 SHA-256 hash만 저장한다. 링크 토큰과 intent 서명 키는 HKDF로 분리한다.
 - Prisma schema 변경 없이 전체 제약, 공간 생성, 초대 반복 수락·재발급 PostgreSQL smoke test가 통과했다.
-- `lint`, `check-types`, `fsd`, 단위 테스트와 Next.js production Webpack build가 통과했다.
+- 기존 부분 unique 인덱스로 Kakao Place를 upsert하고 새 SpacePlace와 추가자의 최초 추천을 한 transaction에 저장한다. 같은 공간의 활성 연결은 기존 상세로 이동하고 제거된 연결은 복구 필요로 분기한다.
+- 장소 추가의 반복 요청·제거 상태·rollback PostgreSQL smoke test가 통과했다. schema·migration은 변경하지 않았다.
+- 장소 기능 추가 후 `lint`, `check-types`, `fsd`, 자동 탐색 단위 테스트 10개와 Next.js production Webpack build가 통과했다.
 - 사용성 프로토타입은 별도 형제 폴더에 보존하며 제품 구현 완료의 근거로 사용하지 않는다.
 
 ## 참고 프로토타입
@@ -64,7 +66,7 @@
 
 ## 다음 한 단계와 열린 결정
 
-1. **다음 구현** — Kakao 장소 후보를 `Place`로 upsert하고 `SpacePlace`와 추가자의 최초 `PlaceRecommendation`을 한 transaction에서 저장한다. 같은 공간의 같은 장소는 기존 상세로, 제거된 연결은 자동 복구 대신 `RESTORE_REQUIRED`로 분기한다.
+1. **다음 구현** — 기존 활성 장소에 멤버가 추천을 추가하는 기능을 구현한다. 활성 Membership과 SpacePlace를 검증하고 사용자별 추천 하나를 유지하며 `impactVersion`을 같은 transaction에서 갱신한다.
 2. Alpha 배포 전 별도 실제 계정으로 가입·초대·권한 흐름을 교차 검증한다. 초대 master key와 Production cookie 설정도 배포 환경에서 확인한다.
 
 완료한 데이터 기반:
@@ -75,6 +77,7 @@
 - `prisma/tests/constraints-smoke.sql`: 실제 PostgreSQL 제약 회귀 검증
 - `prisma/tests/create-space-transaction-smoke.sql`: Space·Owner 원자 생성과 rollback 검증
 - `prisma/tests/invitation-transaction-smoke.sql`: 반복 수락의 단일 Membership과 초대 재발급 무결성 검증
+- `prisma/tests/add-place-transaction-smoke.sql`: Kakao Place·SpacePlace 중복, 제거 상태와 최초 추천 rollback 검증
 
 ## 작업 목적
 
