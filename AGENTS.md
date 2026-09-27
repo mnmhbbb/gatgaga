@@ -22,7 +22,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - 기존 Private Space 리소스에 접근할 때는 UI 노출 여부와 별개로 서버에서 세션, 비활성 사용자, 활성 Membership을 확인한다. 작성자·Owner 등 추가 권한은 행위별로 검사한다. 공간 생성은 인증 User 확인 후 Owner Membership을 함께 만들고, 초대처럼 비멤버가 접근할 경로는 최소 노출 정책을 별도로 명시한다.
 - Prisma schema 변경은 migration과 실제 PostgreSQL 제약 검증 없이 완료로 간주하지 않는다.
 - 함수와 파일은 하나의 명확한 책임을 갖게 하고, 중복보다 잘못된 추상화를 경계하며 가독성·응집도·낮은 결합도를 우선한다.
-- 저장소 고정 Node.js 버전을 적용한 뒤 변경 범위에 맞는 테스트를 실행한다. 기능 완료 전 최소 `lint`, `check-types`, `fsd`, `test`를 확인하고 새 테스트가 `pnpm test`에 포함되는지도 확인한다. Next.js 변경은 build, DB 변경은 관련 PostgreSQL smoke test를 추가한다. 미실행 항목과 이유를 완료 보고에 적는다.
+- 저장소 고정 Node.js 버전을 적용한 뒤 변경 범위에 맞는 테스트를 실행한다. 기능 완료 전 최소 `lint`, `check-types`, `fsd`, `test`를 확인하고 새 테스트가 `pnpm test`에 포함되는지도 확인한다. Next.js 변경은 build, DB 변경은 관련 PostgreSQL smoke test를 추가한다. Prisma schema 또는 migration 변경 시 기존 PostgreSQL smoke test 전체를 실행한다. 미실행 항목과 이유를 완료 보고에 적는다.
 - Git hook이 검증을 대신한다고 가정하지 않는다. hook 유무와 관계없이 커밋 전에 필요한 검증 결과를 직접 확인한다.
 - 설명은 프론트엔드 실무 경험을 전제로 하되, 백엔드·인증·DB 경계는 `요청 → 서버 검증 → DB → 응답` 흐름으로 풀어 쓴다. 주석은 코드만으로 드러나지 않는 이유·권한 불변식·실패 조건에만 간결하게 남기고 동작을 반복 설명하지 않는다.
 - 완료 보고에는 실제 동작, 주요 변경, 통과·미실행 검증, 다음 작업 또는 사용자 결정을 구분해 적는다.
