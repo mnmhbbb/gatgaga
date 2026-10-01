@@ -1,8 +1,8 @@
 # 같가가 프로젝트 핸드오프
 
-- 최종 업데이트: 2026-09-27
-- 현재 단계: Kakao 장소 추가와 기존 장소에 대한 멤버의 추가 추천 기능 완료
-- 다음 한 단계: Kakao 검색 결과가 없을 때 장소 직접 등록 기능 구현
+- 최종 업데이트: 2026-10-01
+- 현재 단계: Kakao 장소 추가·멤버의 추가 추천·직접 등록 구현 및 자동 검증 완료, 직접 등록 브라우저 검증 미실행
+- 다음 한 단계: 직접 등록의 실제 브라우저 흐름 확인 후 공간 목록·지도 전환 구현
 - 저장소: 이 문서가 들어 있는 `gatgaga` 제품 저장소
 
 ## 한 줄 정의
@@ -29,7 +29,7 @@
 
 ## 실제 제품 구현과 검증
 
-- 현재 제품에는 로그인·내 공간·공간 생성·Private Space 접근·초대 참여와 Kakao 장소 검색·확인·저장·목록·상세, 멤버의 추가 추천이 연결됐다. 장소 상세는 위치 지도, 추천한 멤버와 사용자별 추천 상태를 표시한다. 직접 등록·공간 지도 전환·글·댓글·제거·복구는 아직 구현되지 않았다.
+- 현재 제품에는 로그인·내 공간·공간 생성·Private Space 접근·초대 참여와 Kakao 장소 검색·확인·저장·목록·상세, 멤버의 추가 추천과 직접 등록이 연결됐다. 장소 상세는 위치 지도, 출처, 추천한 멤버와 사용자별 추천 상태를 표시한다. 공간 지도 전환·글·댓글·제거·복구는 아직 구현되지 않았다.
 - Prisma 7.10.0과 Better Auth 1.7.3을 정확히 고정했다. 로컬 DB는 Docker PostgreSQL 18.4를 사용한다.
 - Better Auth core와 제품 ERD를 합친 첫 migration, 부분 unique·CHECK 제약과 rollback smoke test가 통과했다.
 - Better Auth Runtime은 Prisma adapter와 Kakao provider를 사용하며 `/api/auth/[...all]`에 연결했다.
@@ -48,7 +48,13 @@
 - 장소 추가의 반복 요청·제거 상태·rollback PostgreSQL smoke test가 통과했다. schema·migration은 변경하지 않았다.
 - 추가 추천은 활성 Membership과 SpacePlace를 확인하고 중복 요청을 멱등 처리한다. 새 추천과 `impactVersion` 증가는 같은 transaction에서 처리하며 schema·migration은 변경하지 않았다.
 - 추가 추천의 사용자별 중복·제거 상태·rollback PostgreSQL smoke test가 통과했다. 실제 두 계정의 추천·권한 교차 검증은 아직 확인하지 않았다.
-- 추가 추천 기능 후 `lint`, `check-types`, `fsd`, 자동 탐색 단위 테스트 10개와 Next.js production Webpack build가 통과했다.
+- 직접 등록은 검색어를 장소명에 미리 채우고 주소·지역 검색 및 0건 시 근처 장소 후보를 제공한다. 지도 핀 확인 후 USER Place·SpacePlace·최초 추천을 원자 저장하고 목록·상세에서 직접 등록 출처를 표시한다. 이름·좌표 자동 병합과 현재 위치 요청은 하지 않는다.
+- 동일 폼의 등록 UUID를 Place PK로 사용해 재시도를 멱등 처리한다. 타 공간·등록자·출처 ID 재사용은 거부한다. 새로 연 폼은 별도 등록이며 schema·migration 변경은 없다. ADR-0004에 범위를 기록했다.
+- 직접 등록 PostgreSQL 테스트에서 동시 요청·비멤버·취소 Membership·비활성 User·타 공간/등록자/출처 ID·제거 상태·추천 실패 rollback이 통과했다. 기존 장소 추가·추천·제약 smoke test도 통과했다.
+- Node.js 24.18.1에서 `lint`, `check-types`, `fsd`, `pnpm test` 17개와 production Webpack build가 통과했다. `pnpm test`의 DB 테스트 1개는 기본 skip이며 `db:test-manual-place`로 별도 통과했다. FSD의 파일 감시 한도는 `CHOKIDAR_USEPOLLING=1`로 우회했다.
+- 장소 추가 성공은 상세 이동 URL에서 읽어 도착한 화면에 3초 toast로 표시한다. 직접 등록의 실제 Kakao 검색·지도·360px 화면·성공 toast 브라우저 검증은 컴퓨터 제어 권한이 없어 미실행이다.
+- 두 실제 계정의 추천 수·선택 상태·권한, 추천 성공 피드백 및 다른 탭 복귀 시 데이터 갱신은 미검증이다. TanStack Query는 설치하지 않았고 자동 재조회도 없다. 두 탭 검증 후 필요한 화면의 재조회 방식을 판단한다.
+- 로컬 PostgreSQL에서 테스트 계정 하나의 Membership을 참여 취소한 상태는 유지했다. 해당 계정의 기존 상세 404는 사용자가 확인했으며 이 DB 상태는 Git에 포함되지 않는다.
 - 사용성 프로토타입은 별도 형제 폴더에 보존하며 제품 구현 완료의 근거로 사용하지 않는다.
 
 ## 참고 프로토타입
@@ -68,8 +74,9 @@
 
 ## 다음 한 단계와 열린 결정
 
-1. **다음 구현** — Kakao 검색 결과가 없을 때 장소명과 주소·좌표를 확인해 직접 등록하는 기능을 구현한다. Kakao 장소와 자동 병합하지 않는다.
-2. Alpha 배포 전 별도 실제 계정으로 가입·초대·권한 흐름을 교차 검증한다. 초대 master key와 Production cookie 설정도 배포 환경에서 확인한다.
+1. **다음 확인** — 브라우저 제어 권한이 있는 환경에서 `검색 0건 → 직접 등록 → 주소/근처 장소 후보 → 지도 → 저장 → 상세 성공 toast → 목록`을 확인한다. 두 실제 계정의 추가 추천·권한·탭 복귀 및 추천 성공 피드백도 남아 있다.
+2. **다음 구현** — 확정된 구현 순서에 따라 공간 목록·지도 전환을 구현한다. 공간 나가기는 PRD의 P1 범위를 유지한다.
+3. Alpha 배포 전 별도 실제 계정으로 가입·초대·권한 흐름을 교차 검증한다. 초대 master key와 Production cookie 설정도 배포 환경에서 확인한다.
 
 완료한 데이터 기반:
 
@@ -81,6 +88,7 @@
 - `prisma/tests/invitation-transaction-smoke.sql`: 반복 수락의 단일 Membership과 초대 재발급 무결성 검증
 - `prisma/tests/add-place-transaction-smoke.sql`: Kakao Place·SpacePlace 중복, 제거 상태와 최초 추천 rollback 검증
 - `prisma/tests/recommend-place-transaction-smoke.sql`: 추가 추천의 중복·제거 상태와 impactVersion rollback 검증
+- `prisma/tests/manual-place.test.mjs`: 실제 직접 등록 트랜잭션의 동시 재시도·권한·격리·제거·rollback 검증. `pnpm test`에서는 DB 없이 skip하고 `pnpm db:test-manual-place`로 로컬 PostgreSQL에서 실행한다.
 
 ## 작업 목적
 

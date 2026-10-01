@@ -1,7 +1,7 @@
 # 같가가 기술 설계 v1.0
 
-- 최종 업데이트: 2026-09-27
-- 상태: **Kakao 장소 저장·멤버의 추가 추천 완료 — 직접 등록 다음 작업**
+- 최종 업데이트: 2026-10-01
+- 상태: **Kakao 장소 저장·추가 추천·직접 등록 완료 — 공간 목록·지도 전환 다음 작업**
 - 제품 기준: `../product/prd-v1.0.md`
 - 사용자 흐름: `../product/user-flow-v1.0.md`
 - 화면 기준: `../design/screen-spec-v1.0.md`
@@ -247,6 +247,12 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 
 직접 등록 Place는 `providerPlaceId` 없이 장소명과 좌표 및 등록자를 보존한다. 원본 Space는 soft delete 뒤에도 남는 SpacePlace 관계로 확인하며, Private Alpha에서는 다른 Space의 검색 후보로 자동 재사용하지 않는다.
 
+직접 등록은 브라우저의 [Kakao Geocoder.addressSearch](https://apis.map.kakao.com/web/documentation/#services_Geocoder_addressSearch)로 주소·지역을 검색하고 0건일 때 `Places.keywordSearch`로 근처 장소를 찾는다. 선택한 주소·좌표만 위치로 저장하며 Provider ID·카테고리·외부 URL은 복사하지 않는다. 현재 위치를 요청하지 않으며 지도 핀 로드가 끝나야 저장할 수 있다.
+
+직접 등록의 요청 흐름은 `Server Action → requireCurrentUser → 입력 검증 → transaction의 활성 User·Membership 확인 → Place(USER)·SpacePlace·최초 Recommendation 저장 → 상세 이동`이다. 같은 Space의 쓰기를 Space 행 잠금으로 정렬한다. 폼의 첫 저장에서 만든 UUID v4를 `Place.id`로 사용해 동시 요청과 응답 유실 후 재시도에 기존 PK를 활용한다. ID 충돌 시 같은 등록자·같은 Space의 USER 장소만 기존 상세 또는 복구 필요로 응답한다. 다른 사용자·공간·출처에는 `NOT_FOUND`를 반환하고 장소 사실을 덮어쓰지 않는다. 자세한 결정과 새로 연 폼의 경계는 [ADR-0004](../adr/0004-manual-place-identity.md)에 기록했다.
+
+`pnpm db:test-manual-place`는 compose.yaml의 로컬 DB에만 연결해 실제 `saveManualPlace` 트랜잭션을 검증한다. 동시 재시도·비멤버·취소 Membership·비활성 User·타 공간/등록자/출처 ID 재사용·제거 상태·추천 실패 rollback을 확인하고 생성한 fixture를 정리한다. Prisma schema·migration 변경은 없다.
+
 ### 삭제 상태
 
 - 사용자 삭제와 운영 숨김, 실제 물리 삭제를 구분한다.
@@ -299,6 +305,7 @@ P1에서 `Post ─ Media`, Public 운영에서 `Report`, `Ban` 또는 Membership
 | `rotateInvitation` | spaceId, expectedInvitationId | 기존 링크 폐기와 새 링크 발급 원자 처리 |
 | `acceptInvitation` | 서명된 intent의 invitationId | 활성·폐기 재확인, Membership 멱등 생성 |
 | `addPlaceToSpace` | spaceId, PlaceCandidate | Provider/Space 중복 방지, 최초 추천 생성 |
+| `addManualPlace` | spaceId, 직접 등록 UUID·이름·주소·좌표 | 활성 Member 검증, USER 출처 강제, 재시도 멱등·공간 격리, 최초 추천 원자 생성 |
 | `recommendPlace` | spaceId, spacePlaceId | 활성 Member·장소 확인, 사용자별 추천 하나, 새 추천 시 impactVersion 갱신 |
 | `createPlacePost` | spacePlaceId, body | 활성 Member, 1,000자 제한 |
 | `updatePost` | postId, body | 작성자 권한 |
@@ -418,8 +425,8 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 5. **완료** — 초대 링크 지연 발급·동일 링크 재복사·폐기·재발급, fragment→intent 로그인 복귀, Membership 멱등 수락
 6. **완료** — Kakao 후보의 Place upsert와 SpacePlace·최초 Recommendation 원자 저장, 중복·제거 분기 및 PostgreSQL smoke test
 7. **완료** — 멤버의 추가 추천과 사용자별 중복 방지, impactVersion 갱신
-8. **다음** — Kakao 검색 결과가 없을 때 직접 등록
-9. 목록·지도 전환과 장소 글·댓글 및 작성자 권한·revision
+8. **완료** — Kakao 검색 결과 0건에서 주소·지역·근처 장소 후보 및 지도 확인 후 직접 등록, 재시도·권한·rollback PostgreSQL 검증
+9. **다음** — 공간 목록·지도 전환, 이후 장소 글·댓글 및 작성자 권한·revision
 10. 장소 제거·실행 취소·복구 동시성 테스트
 11. E2E·관측·Vercel Preview
 12. 지인 Private Alpha 배포
@@ -429,7 +436,6 @@ MSW handler는 서버 DTO 계약을 따라야 하며 별도 가짜 도메인 모
 - Server Action과 Route Handler의 기능별 사용 기준
 - Zod 등 runtime validation 도구
 - Neon pooled·direct 연결 문자열과 Preview DB 운영 방식
-- 직접 등록 주소 검색 UX와 Kakao Geocoder 사용 범위
 - Post·Comment·SpacePlace 보존 기간과 물리 삭제 작업
 - 오류 추적과 제품 분석 도구
 - Vercel·Neon 리전, Preview DB 전략과 예산 알림 한도

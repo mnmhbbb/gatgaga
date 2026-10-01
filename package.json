@@ -21,7 +21,8 @@
     "db:test-space-transaction": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/create-space-transaction-smoke.sql",
     "db:test-invitation": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/invitation-transaction-smoke.sql",
     "db:test-add-place": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/add-place-transaction-smoke.sql",
-    "db:test-recommend-place": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/recommend-place-transaction-smoke.sql"
+    "db:test-recommend-place": "docker compose exec -T postgres psql -U gatgaga -d gatgaga -f - < prisma/tests/recommend-place-transaction-smoke.sql",
+    "db:test-manual-place": "RUN_MANUAL_PLACE_DB_TEST=1 node --test prisma/tests/manual-place.test.mjs"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.7.3",

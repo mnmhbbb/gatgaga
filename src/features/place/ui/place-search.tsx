@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { addPlaceAction } from "../api/add-place-action";
 import { loadKakaoMaps, type KakaoPlaceResult } from "../lib/kakao-maps";
 import { PlaceMap } from "./place-map";
+import { ManualPlaceForm } from "./manual-place-form";
 
 type Candidate = {
   providerPlaceId: string;
@@ -33,6 +34,8 @@ function toCandidate(place: KakaoPlaceResult): Candidate {
 export function PlaceSearch({ spaceId }: { spaceId: string }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [searchedQuery, setSearchedQuery] = useState("");
+  const [manual, setManual] = useState(false);
   const [results, setResults] = useState<Candidate[]>([]);
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [searchStatus, setSearchStatus] = useState<"idle" | "loading" | "done">("idle");
@@ -57,6 +60,7 @@ export function PlaceSearch({ spaceId }: { spaceId: string }) {
         });
       });
       setResults(items);
+      setSearchedQuery(term);
       setSearchStatus("done");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "장소 검색에 실패했어요.");
@@ -83,6 +87,8 @@ export function PlaceSearch({ spaceId }: { spaceId: string }) {
       }
     });
   }
+
+  if (manual) return <ManualPlaceForm spaceId={spaceId} initialName={searchedQuery} onBack={() => setManual(false)} />;
 
   return (
     <div className="mx-auto min-h-svh w-full max-w-[430px] bg-surface px-6 py-8">
@@ -121,7 +127,10 @@ export function PlaceSearch({ spaceId }: { spaceId: string }) {
           {searchStatus === "done" ? (
             <div className="mt-7">
               <h2 className="text-sm font-bold text-ink">검색 결과 {results.length}</h2>
-              {results.length === 0 ? <p className="mt-5 text-sm text-muted">검색 결과가 없어요. 다른 지역이나 장소명을 입력해 주세요.</p> : (
+              {results.length === 0 ? <div className="mt-5">
+                <p className="text-sm text-muted">검색 결과가 없어요. 다른 지역이나 장소명을 검색하거나 직접 등록해 주세요.</p>
+                <button type="button" onClick={() => setManual(true)} className="mt-4 min-h-12 w-full rounded-2xl border border-brand px-4 text-sm font-bold text-brand">직접 등록하기</button>
+              </div> : (
                 <ul className="mt-3 divide-y divide-line rounded-2xl border border-line">
                   {results.map((place) => <li key={place.providerPlaceId}>
                     <button type="button" onClick={() => { setSelected(place); setError(""); }} className="w-full px-4 py-4 text-left">

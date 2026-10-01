@@ -81,7 +81,8 @@ export default async function SpacePage({ params, searchParams }: PageProps<"/sp
               <li key={item.id}>
                 <Link href={`/spaces/${spaceId}/places/${item.id}`} className="block px-4 py-4">
                   <strong className="block text-base text-ink">{item.place.name}</strong>
-                  <span className="mt-1 block text-xs text-muted">{item.place.category} · {item.place.address}</span>
+                  {item.place.sourceType === "USER" ? <span className="mt-1 block text-xs text-brand">직접 등록한 장소</span> : null}
+                  <span className="mt-1 block text-xs text-muted">{[item.place.category, item.place.address].filter(Boolean).join(" · ")}</span>
                   <span className="mt-1 block text-xs text-brand">추천 {item._count.recommendations}명</span>
                 </Link>
               </li>

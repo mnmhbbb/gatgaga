@@ -10,6 +10,13 @@ export type KakaoPlaceResult = {
   y: string;
 };
 
+export type KakaoAddressResult = {
+  address_name: string;
+  road_address: { address_name: string } | null;
+  x: string;
+  y: string;
+};
+
 type KakaoMaps = {
   maps: {
     load: (callback: () => void) => void;
@@ -17,6 +24,9 @@ type KakaoMaps = {
     Map: new (element: HTMLElement, options: { center: unknown; level: number }) => unknown;
     Marker: new (options: { map: unknown; position: unknown }) => unknown;
     services: {
+      Geocoder: new () => {
+        addressSearch: (query: string, callback: (results: KakaoAddressResult[], status: string) => void) => void;
+      };
       Places: new () => {
         keywordSearch: (query: string, callback: (results: KakaoPlaceResult[], status: string) => void) => void;
       };

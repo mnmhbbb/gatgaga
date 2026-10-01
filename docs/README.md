@@ -1,6 +1,6 @@
 # 같가가 문서 시작점
 
-- 최종 업데이트: 2026-09-19
+- 최종 업데이트: 2026-10-01
 
 새 작업에서 이어갈 때는 먼저 [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md)로 **제품 코드의 현재 구현·다음 작업·열린 결정**을 확인한다. 이 문서는 현행 문서의 목차이며, 진행 상태를 중복 기록하지 않는다.
 
@@ -18,6 +18,7 @@
 | 6 | [`adr/0002-authentication-with-better-auth.md`](adr/0002-authentication-with-better-auth.md) | Better Auth·Kakao 인증 결정과 설정 시점 |
 | 7 | [`adr/0003-invitation-link-lifecycle.md`](adr/0003-invitation-link-lifecycle.md) | 초대 링크의 재복사·재발급과 저장 방식 결정 |
 | 8 | [`development/erd-v0.1.md`](development/erd-v0.1.md) | P0 관계·제약·동시성의 데이터 기준 |
+| 9 | [`adr/0004-manual-place-identity.md`](adr/0004-manual-place-identity.md) | 직접 등록 장소의 식별자·재시도와 공간 격리 |
 
 새로운 결정은 먼저 담당 문서에 반영한다. 내용이 충돌하면 `PRD → 사용자 플로우 → 화면 명세 → ADR·기술 설계 → ERD` 순서로 제품 의도를 판단하고, 구현 제약으로 제품 동작이 달라져야 하면 PRD부터 함께 수정한다. 구현 완료 여부는 문서의 목표·프로토타입 상태가 아니라 실제 제품 코드와 검증 결과를 기준으로 확인한다.
 

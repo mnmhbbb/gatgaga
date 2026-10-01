@@ -1,6 +1,6 @@
 # 같가가 ERD v0.1
 
-- 최종 업데이트: 2026-09-20
+- 최종 업데이트: 2026-10-01
 - 상태: **구현 기준선 — 첫 Prisma migration 적용·검증 완료**
 - 인증 결정: [`../adr/0002-authentication-with-better-auth.md`](../adr/0002-authentication-with-better-auth.md)
 - 제품 기준: [`../product/prd-v1.0.md`](../product/prd-v1.0.md)
@@ -294,6 +294,7 @@ Prisma schema만으로 표현할 수 없는 부분 인덱스와 CHECK는 생성�
 ### 장소와 기여
 
 - `addPlaceToSpace`: 기존 Kakao 부분 unique 인덱스로 Place 삽입 또는 기존 행 조회 → SpacePlace 충돌 시 기존 행 조회 → 새 연결일 때만 최초 Recommendation insert를 한 transaction에서 처리한다. 중복 후보는 기존 Place의 장소 사실을 변경하지 않으며 같은 Space의 추가는 Space 행 잠금으로 직렬화한다.
+- `addManualPlace`: 활성 User·Membership 확인 → 폼의 UUID를 Place PK로 사용해 USER Place insert → SpacePlace·최초 Recommendation insert를 한 transaction에서 처리한다. PK 충돌은 같은 등록자·같은 Space의 USER Place만 재시도로 인정한다. 삭제된 연결은 복구 필요, 타 등록자·타 Space·Kakao ID 재사용은 `NOT_FOUND`다. 기존 PK·unique·source CHECK로 보장하며 schema·migration 변경은 없다.
 - 삭제된 SpacePlace가 unique에 걸리면 자동 복구하지 않고 `RESTORE_REQUIRED`를 반환한다.
 - 추천·Post·Comment의 생성·수정·삭제 transaction은 먼저 `deletedAt IS NULL`인 SpacePlace의 `impactVersion`을 원자적으로 1 증가시킨다. 갱신된 행이 없으면 기여를 만들지 않는다.
 - 장소 제거 확인 응답은 최신 기여 수와 `impactVersion`을 함께 반환한다.
@@ -330,7 +331,8 @@ P1 Public 읽기는 `Space.visibility = PUBLIC`이면 비로그인에도 허용�
 5. **완료** — 기존 초대 해시 schema에서 Owner 발급·복사·폐기·재발급, token 없는 OAuth 복귀와 멱등 수락을 구현하고 PostgreSQL smoke test를 통과했다.
 6. **완료** — Kakao 장소 추가 transaction과 중복·제거·rollback PostgreSQL smoke test를 연결했다. schema·migration은 변경하지 않았다.
 7. **완료** — 추가 추천을 사용자별로 멱등 저장하고 새 추천과 `impactVersion` 증가를 같은 transaction에서 검증했다.
-8. **다음** — 글·댓글·제거 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
+8. **완료** — 직접 등록의 동시 재시도·권한·공간/등록자/출처 격리·제거 상태·rollback을 실제 Prisma 트랜잭션과 로컬 PostgreSQL에서 검증했다.
+9. **다음** — 글·댓글·제거 transaction과 `impactVersion` 동시성 test를 차례로 연결한다.
 
 최소 검증 시나리오:
 

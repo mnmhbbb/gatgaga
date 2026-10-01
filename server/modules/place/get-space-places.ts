@@ -17,7 +17,7 @@ export async function getSpacePlaces(spaceId: string) {
     select: {
       id: true,
       place: {
-        select: { name: true, category: true, address: true, latitude: true, longitude: true, externalUrl: true },
+        select: { sourceType: true, name: true, category: true, address: true, latitude: true, longitude: true, externalUrl: true },
       },
       _count: { select: { recommendations: true } },
     },
@@ -38,7 +38,7 @@ export async function getSpacePlace(spaceId: string, spacePlaceId: string) {
     select: {
       id: true,
       place: {
-        select: { name: true, category: true, address: true, latitude: true, longitude: true, externalUrl: true },
+        select: { sourceType: true, name: true, category: true, address: true, latitude: true, longitude: true, externalUrl: true },
       },
       _count: { select: { recommendations: true } },
       recommendations: {
