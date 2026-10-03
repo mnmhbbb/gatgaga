@@ -4,18 +4,22 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { recommendPlaceAction } from "../api/recommend-place-action";
+import { PlaceSuccessToast } from "./place-success-toast";
 
 type Props = {
   spaceId: string;
   spacePlaceId: string;
+  placeName: string;
   recommendedByCurrentUser: boolean;
+  initiallyAdded: boolean;
 };
 
-export function PlaceRecommendationButton({ spaceId, spacePlaceId, recommendedByCurrentUser }: Props) {
+export function PlaceDetailActions({ spaceId, spacePlaceId, placeName, recommendedByCurrentUser, initiallyAdded }: Props) {
   const router = useRouter();
   const [locallyRecommended, setLocallyRecommended] = useState(false);
   const recommended = recommendedByCurrentUser || locallyRecommended;
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState<"ADDED" | "RECOMMENDED" | null>(initiallyAdded ? "ADDED" : null);
   const [isPending, startTransition] = useTransition();
 
   function recommend() {
@@ -27,6 +31,7 @@ export function PlaceRecommendationButton({ spaceId, spacePlaceId, recommendedBy
 
       if (result.status === "CREATED" || result.status === "ALREADY_RECOMMENDED") {
         setLocallyRecommended(true);
+        if (result.status === "CREATED") setSuccess("RECOMMENDED");
       } else if (result.status === "UNAUTHENTICATED") {
         router.push("/");
       } else if (result.status === "NOT_FOUND" || result.status === "FORBIDDEN") {
@@ -39,6 +44,11 @@ export function PlaceRecommendationButton({ spaceId, spacePlaceId, recommendedBy
 
   return (
     <div className="mt-5">
+      {success ? <PlaceSuccessToast
+        key={success}
+        message={success === "ADDED" ? `이 공간에 추가했어요: ${placeName}` : `추천을 남겼어요: ${placeName}`}
+        closeLabel={success === "ADDED" ? "추가 완료 알림 닫기" : "추천 완료 알림 닫기"}
+      /> : null}
       <button
         type="button"
         onClick={recommend}

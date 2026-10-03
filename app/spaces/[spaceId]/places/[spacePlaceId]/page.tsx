@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { PlaceAddedToast, PlaceMap, PlaceRecommendationButton } from "@/features/place";
+import { PlaceDetailActions, PlaceMap } from "@/features/place";
 import { CurrentUserError } from "@server/modules/auth";
 import { getSpacePlace } from "@server/modules/place";
 
@@ -18,7 +18,6 @@ export default async function PlaceDetailPage({ params, searchParams }: PageProp
 
   return <main className="mx-auto min-h-svh w-full max-w-[430px] bg-surface px-6 py-8">
     <Link href={`/spaces/${spaceId}`} className="inline-flex min-h-11 items-center text-sm font-bold text-brand">공간으로 돌아가기</Link>
-    {query.added === "1" ? <PlaceAddedToast key={spacePlaceId} name={item.place.name} /> : null}
     {query.added === "0" ? <p role="status" className="mt-4 rounded-2xl bg-brand-soft p-4 text-sm text-brand-strong">이미 이 공간에 있는 장소예요.</p> : null}
     <div className="mt-8"><PlaceMap name={item.place.name} latitude={item.place.latitude} longitude={item.place.longitude} /></div>
     <p className="mt-6 text-xs font-bold text-brand">{item.place.sourceType === "USER" ? "직접 등록한 장소" : "Kakao Maps 장소"}</p>
@@ -29,10 +28,13 @@ export default async function PlaceDetailPage({ params, searchParams }: PageProp
     <div className="mt-8 rounded-2xl border border-line p-5">
       <h2 className="text-sm font-bold text-ink">추천 {item._count.recommendations}명</h2>
       <p className="mt-2 text-sm text-muted">{item.recommendations.map(({ user }) => user.name).join(" · ")}</p>
-      <PlaceRecommendationButton
+      <PlaceDetailActions
+        key={spacePlaceId}
         spaceId={spaceId}
         spacePlaceId={spacePlaceId}
+        placeName={item.place.name}
         recommendedByCurrentUser={item.recommendedByCurrentUser}
+        initiallyAdded={query.added === "1"}
       />
     </div>
   </main>;
